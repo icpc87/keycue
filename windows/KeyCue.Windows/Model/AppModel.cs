@@ -98,6 +98,7 @@ public sealed partial class AppModel
     public LiveValues Values { get; } = new();
     /// <summary>録画・配信・仮想カメラ</summary>
     public Output.ProgramFeed Feed { get; }
+    public Output.VirtualCamera Camera { get; }
     private readonly Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
 
     // ---- 状態と、変わったときの知らせ ----
@@ -160,6 +161,7 @@ public sealed partial class AppModel
         InstanceNumber = instance;
         Video.InstanceNumber = instance;
         Feed = new Output.ProgramFeed(this);
+        Camera = new Output.VirtualCamera(Feed);
         Video.Changed += () => { if (!applyingDocument) MarkDirty(); };
     }
 
@@ -191,6 +193,7 @@ public sealed partial class AppModel
     public void Shutdown()
     {
         timer?.Stop();
+        Camera.Stop();
         Feed.StopEverything();
         StopAll(true);
         Video.StopAllImmediately();

@@ -115,7 +115,7 @@ private struct TopBarContent: View {
                 .help(video.isShowing ? "映像出力を閉じる" : "映像出力を開く")
             }
 
-            OutputButtons(feed: model.feed, compact: compact)
+            OutputButtons(feed: model.feed, camera: model.virtualCamera, compact: compact)
 
             Spacer(minLength: 4)
 
@@ -349,7 +349,7 @@ private struct Sidebar: View {
                     .frame(height: 112)
             }
 
-            OutputStatusList(feed: model.feed)
+            OutputStatusList(feed: model.feed, camera: model.virtualCamera)
 
             Text("再生中").font(.caption).foregroundStyle(.secondary)
             ScrollView {

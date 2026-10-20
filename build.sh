@@ -37,6 +37,47 @@ cp THIRD_PARTY_NOTICES.md "$APP/Contents/Resources/THIRD_PARTY_NOTICES.md"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(tr -d '[:space:]' < VERSION)" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(tr -d '[:space:]' < BUILD_NUMBER)" "$APP/Contents/Info.plist"
 
+# 仮想カメラ（Camera Extension）。Apple Developer で作ったプロファイル（Developer ID）が
+# ~/Library/Developer/KeyCue/profiles/KeyCue.provisionprofile（jp.ic2.keycue・System Extension 付き）と
+# （拡張の KeyCueCamera.provisionprofile はあれば使う）にあるときだけ入れる。KEYCUE_PROFILES で場所を変えられる
+PROFILES="${KEYCUE_PROFILES:-$HOME/Library/Developer/KeyCue/profiles}"
+CAMBIN="$(dirname "$BIN")/KeyCueCamera"
+APP_ENT=Resources/KeyCue.entitlements
+SYSEXT=""
+if [[ -f "$PROFILES/KeyCue.provisionprofile" && -x "$CAMBIN" ]]; then
+  TEAM=$(security cms -D -i "$PROFILES/KeyCue.provisionprofile" | plutil -extract TeamIdentifier.0 raw -)
+  SYSEXT="$APP/Contents/Library/SystemExtensions/jp.ic2.keycue.camera.systemextension"
+  mkdir -p "$SYSEXT/Contents/MacOS"
+  cp "$CAMBIN" "$SYSEXT/Contents/MacOS/jp.ic2.keycue.camera"
+  sed "s/TEAMID/$TEAM/" Resources/KeyCueCamera-Info.plist > "$SYSEXT/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(tr -d '[:space:]' < VERSION)" "$SYSEXT/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(tr -d '[:space:]' < BUILD_NUMBER)" "$SYSEXT/Contents/Info.plist"
+  # 拡張のプロファイルはなくてもよい（サンドボックスとチーム名付きの App Group だけなので）
+  CAMPROFILE=0
+  [[ -f "$PROFILES/KeyCueCamera.provisionprofile" ]] && { cp "$PROFILES/KeyCueCamera.provisionprofile" "$SYSEXT/Contents/embedded.provisionprofile"; CAMPROFILE=1; }
+  cp "$PROFILES/KeyCue.provisionprofile" "$APP/Contents/embedded.provisionprofile"
+  # 本体：拡張を入れる権限を足す
+  APP_ENT="$STAGE/KeyCue.entitlements"
+  cp Resources/KeyCue.entitlements "$APP_ENT"
+  /usr/libexec/PlistBuddy -c "Add :com.apple.developer.system-extension.install bool true" \
+    -c "Add :com.apple.application-identifier string $TEAM.jp.ic2.keycue" \
+    -c "Add :com.apple.developer.team-identifier string $TEAM" "$APP_ENT" >/dev/null
+  # 拡張：サンドボックスと、Mach サービス名に使う App Group
+  CAM_ENT="$STAGE/KeyCueCamera.entitlements"
+  rm -f "$CAM_ENT"
+  /usr/libexec/PlistBuddy -c "Add :com.apple.security.app-sandbox bool true" \
+    -c "Add :com.apple.security.application-groups array" \
+    -c "Add :com.apple.security.application-groups:0 string $TEAM.jp.ic2.keycue.camera" \
+    "$CAM_ENT" >/dev/null
+  if [[ $CAMPROFILE == 1 ]]; then
+    /usr/libexec/PlistBuddy -c "Add :com.apple.application-identifier string $TEAM.jp.ic2.keycue.camera" \
+      -c "Add :com.apple.developer.team-identifier string $TEAM" "$CAM_ENT" >/dev/null
+  fi
+  echo "virtual camera: included (team $TEAM)"
+else
+  echo "注意: 仮想カメラのプロファイルがありません（$PROFILES）。仮想カメラなしで作ります"
+fi
+
 # 署名：Developer ID があればそれで、Hardened Runtime を付けて署名する（公証に必要）。
 # 同じ証明書なら、ビルドし直しても同じアプリと見なされ、セキュリティソフトや macOS の許可が続く。
 # なければ ad-hoc。KEYCUE_SIGN_IDENTITY で指定もできる。配布用は KEYCUE_TIMESTAMP=1 で時刻認証を付ける
@@ -47,7 +88,8 @@ if [[ -n "$IDENTITY" ]]; then
   [[ "${KEYCUE_TIMESTAMP:-0}" == "1" ]] && TS=(--timestamp)
   # 中の ffmpeg を先に署名する（公証は中の実行ファイルもすべて見る）
   [[ -f "$APP/Contents/MacOS/ffmpeg" ]] && codesign --force --options runtime "${TS[@]}" --sign "$IDENTITY" "$APP/Contents/MacOS/ffmpeg" >/dev/null
-  codesign --force --options runtime --entitlements Resources/KeyCue.entitlements "${TS[@]}" \
+  [[ -n "$SYSEXT" ]] && codesign --force --options runtime --entitlements "$CAM_ENT" "${TS[@]}" --sign "$IDENTITY" "$SYSEXT" >/dev/null
+  codesign --force --options runtime --entitlements "$APP_ENT" "${TS[@]}" \
     --sign "$IDENTITY" "$APP" >/dev/null
   echo "signed: $IDENTITY"
 else

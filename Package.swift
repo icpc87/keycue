@@ -8,7 +8,12 @@ let package = Package(
         .executableTarget(
             name: "KeyCue",
             path: "Sources/KeyCue"
-        )
+        ),
+        // 仮想カメラ（Camera Extension）。build.sh が KeyCue.app/Contents/Library/SystemExtensions に入れる
+        .executableTarget(
+            name: "KeyCueCamera",
+            path: "Sources/KeyCueCamera"
+        ),
     ],
     swiftLanguageModes: [.v5]
 )

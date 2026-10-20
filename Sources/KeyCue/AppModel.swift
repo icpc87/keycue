@@ -385,6 +385,7 @@ final class AppModel: ObservableObject {
     let pageLive = PageLiveState()
     /// 録画・配信・仮想カメラ
     lazy var feed = ProgramFeed(model: self)
+    lazy var virtualCamera = VirtualCamera(feed: feed)
 
     var onTitleChange: (() -> Void)?
     var onBackgroundInputChange: ((Bool) -> Void)?

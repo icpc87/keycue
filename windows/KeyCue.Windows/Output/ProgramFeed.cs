@@ -23,7 +23,16 @@ public sealed class ProgramFeed
     public event Action<byte[], int, int>? FrameReady;
     public event Action? Changed;
     /// <summary>仮想カメラなど、録画・配信以外にもコマが要るとき</summary>
-    public bool ExtraConsumer { get; set; }
+    public bool ExtraConsumer
+    {
+        get => extraConsumer;
+        set
+        {
+            extraConsumer = value;
+            if (value) EnsureRunning(); else StopIfIdle();
+        }
+    }
+    private bool extraConsumer;
 
     public ProgramFeed(AppModel model)
     {

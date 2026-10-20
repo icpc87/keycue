@@ -15,6 +15,7 @@ public sealed class OutputButtons : StackPanel
     private readonly AppModel model;
     private readonly Button record = new() { Focusable = false, Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(0, 0, 6, 0) };
     private readonly Button stream = new() { Focusable = false, Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(0, 0, 6, 0) };
+    private readonly Button camera = new() { Focusable = false, Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(0, 0, 6, 0) };
 
     public OutputButtons(AppModel model, MainWindow window)
     {
@@ -24,8 +25,15 @@ public sealed class OutputButtons : StackPanel
         stream.Click += (_, _) => Toggle(OutputKind.Stream, window);
         record.ToolTip = "オンにした録画の出力をすべて始める／止める（設定 › 録画・配信）";
         stream.ToolTip = "オンにした配信の出力をすべて始める／止める（設定 › 録画・配信）";
+        camera.ToolTip = "プログラムの絵を、Zoom・Teams・カメラアプリなどのカメラ「KeyCue」として出す（Windows 11。もう一度押すと止める）";
+        camera.Click += (_, _) =>
+        {
+            if (model.Camera.IsOn) model.Camera.Stop(); else model.Camera.Start();
+        };
         Children.Add(record);
         Children.Add(stream);
+        Children.Add(camera);
+        model.Camera.Changed += Sync;
         model.Feed.Changed += Sync;
         var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         t.Tick += (_, _) => Sync();
@@ -50,6 +58,17 @@ public sealed class OutputButtons : StackPanel
     {
         Set(record, OutputKind.Record, "● 録画", Theme.Danger);
         Set(stream, OutputKind.Stream, "((•)) 配信", Theme.Live);
+        camera.Content = model.Camera.Status == VirtualCamera.State.Failed ? "仮想カメラ  ⚠" : "仮想カメラ";
+        if (model.Camera.Status == VirtualCamera.State.Running)
+        {
+            camera.Foreground = Brushes.Black;
+            camera.Background = Theme.Playing;
+        }
+        else
+        {
+            camera.ClearValue(Control.ForegroundProperty);
+            camera.ClearValue(Control.BackgroundProperty);
+        }
     }
 
     private void Set(Button b, OutputKind kind, string label, Brush onColor)
@@ -82,6 +101,7 @@ public sealed class OutputStatusList : StackPanel
     {
         this.model = model;
         model.Feed.Changed += Build;
+        model.Camera.Changed += Build;
         var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         t.Tick += (_, _) => Build();
         t.Start();
@@ -92,7 +112,7 @@ public sealed class OutputStatusList : StackPanel
     {
         Children.Clear();
         var list = model.Feed.Active;
-        if (list.Count == 0) return;
+        if (list.Count == 0 && !model.Camera.IsOn) return;
         Children.Add(Theme.Caption("録画・配信"));
         foreach (var o in list)
         {
@@ -117,6 +137,20 @@ public sealed class OutputStatusList : StackPanel
                 row.Children.Add(new TextBlock { Text = System.IO.Path.GetFileName(o.Target), Foreground = Theme.Tertiary, FontSize = 10.5, TextTrimming = TextTrimming.CharacterEllipsis });
             if (o.Error != null)
                 row.Children.Add(new TextBlock { Text = o.Error, Foreground = Theme.Warning, FontSize = 10.5, TextWrapping = TextWrapping.Wrap, MaxHeight = 60 });
+            Children.Add(row);
+        }
+        if (model.Camera.IsOn)
+        {
+            var cam = model.Camera;
+            var (text, color) = cam.Status switch
+            {
+                VirtualCamera.State.Running => (cam.Connected ? "カメラ「KeyCue」に出しています" : "カメラ「KeyCue」を用意しました（ほかのアプリで選ぶと映ります）", Theme.Playing),
+                VirtualCamera.State.Installing => (cam.Message, Theme.Secondary),
+                _ => (cam.Message, Theme.Warning),
+            };
+            var row = new StackPanel { Margin = new Thickness(0, 3, 0, 3) };
+            row.Children.Add(new TextBlock { Text = "仮想カメラ", Foreground = color, FontWeight = FontWeights.SemiBold });
+            row.Children.Add(new TextBlock { Text = text, Foreground = cam.Status == VirtualCamera.State.Running ? Theme.Secondary : color, FontSize = 11, TextWrapping = TextWrapping.Wrap });
             Children.Add(row);
         }
     }

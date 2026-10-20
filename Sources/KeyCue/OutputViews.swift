@@ -9,6 +9,7 @@ private func elapsed(_ since: Date) -> String {
 /// 上の帯の「録画」「配信」ボタン（押すとオンにした出力をすべて始める・止める）
 struct OutputButtons: View {
     @ObservedObject var feed: ProgramFeed
+    @ObservedObject var camera: VirtualCamera
     let compact: Bool
 
     var body: some View {
@@ -16,6 +17,7 @@ struct OutputButtons: View {
             HStack(spacing: 6) {
                 button(.record, icon: "record.circle", title: "録画", color: .red)
                 button(.stream, icon: "dot.radiowaves.left.and.right", title: "配信", color: Color(red: 0.2, green: 0.55, blue: 1))
+                cameraButton
             }
         }
     }
@@ -40,6 +42,18 @@ struct OutputButtons: View {
         .modifier(OnAir(on: !running.isEmpty, color: color))
         .help(kind == .record ? "オンにした録画の出力をすべて始める／止める（設定 › 録画・配信）"
                               : "オンにした配信の出力をすべて始める／止める（設定 › 録画・配信）")
+    }
+
+    private var cameraButton: some View {
+        let on = camera.state == .running
+        return Button {
+            camera.isOn ? camera.stop() : camera.start()
+        } label: {
+            if compact { Image(systemName: "web.camera") } else { Label("仮想カメラ", systemImage: "web.camera") }
+        }
+        .fixedSize()
+        .modifier(OnAir(on: on, color: .green))
+        .help("プログラムの絵を、Zoom・Teams・OBS などのカメラ「KeyCue」として出す（もう一度押すと止める）")
     }
 
     private func toggle(_ kind: OutputSpec.Kind) {
@@ -83,15 +97,30 @@ private struct OnAir: ViewModifier {
 /// 右の欄の、動いている録画・配信の様子
 struct OutputStatusList: View {
     @ObservedObject var feed: ProgramFeed
+    @ObservedObject var camera: VirtualCamera
 
     var body: some View {
-        if !feed.outputs.isEmpty {
+        if !feed.outputs.isEmpty || camera.isOn {
             TimelineView(.periodic(from: .now, by: 1)) { _ in
                 VStack(alignment: .leading, spacing: 6) {
                     Text("録画・配信").font(.caption).foregroundStyle(.secondary)
                     ForEach(feed.outputs, id: \.spec.id) { o in row(o) }
+                    if camera.isOn { cameraRow }
                 }
             }
+        }
+    }
+
+    private var cameraRow: some View {
+        let (text, color): (String, Color) = switch camera.state {
+        case .running: ("カメラ「KeyCue」に出しています", .green)
+        case .installing(let m): (m, .secondary)
+        case .failed(let m): (m, .orange)
+        case .off: ("", .secondary)
+        }
+        return VStack(alignment: .leading, spacing: 1) {
+            Label("仮想カメラ", systemImage: "web.camera").font(.caption.weight(.semibold)).foregroundStyle(color)
+            Text(text).font(.caption2).foregroundStyle(camera.state == .running ? .secondary : color).fixedSize(horizontal: false, vertical: true)
         }
     }
 

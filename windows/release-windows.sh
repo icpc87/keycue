@@ -6,6 +6,9 @@
 # サイトへの公開は別（deploy_site.sh）。
 set -euo pipefail
 cd "$(dirname "$0")"
+
+# 仮想カメラの DLL（llvm-mingw で作る）
+./KeyCueCamera/build.sh
 VERSION=$(tr -d '[:space:]' < ../VERSION)
 BUILD=$(tr -d '[:space:]' < ../BUILD_NUMBER)
 SITE="https://keycue.ic2.jp"

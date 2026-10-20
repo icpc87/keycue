@@ -19,6 +19,10 @@
     <Copyright>© 2026 Hiroki Ichiyanagi</Copyright>
     <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)../../VERSION').Trim())</Version>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <!-- 仮想カメラの DLL（windows/KeyCueCamera/build.sh で作る） -->
+    <CameraRoot Condition="'$(CameraRoot)' == ''">$(HOME)/Library/Developer/KeyCue/windows/camera</CameraRoot>
+    <CameraArch Condition="'$(RuntimeIdentifier)' == 'win-arm64'">arm64</CameraArch>
+    <CameraArch Condition="'$(CameraArch)' == ''">x64</CameraArch>
     <!-- FFmpeg の Windows 用ライブラリ（BtbN/FFmpeg-Builds の LGPL 版）を置いた場所 -->
     <FFmpegRoot Condition="'$(FFmpegRoot)' == ''">$(HOME)/Library/Developer/KeyCue/windows-deps</FFmpegRoot>
     <FFmpegArch Condition="'$(RuntimeIdentifier)' == 'win-arm64'">winarm64</FFmpegArch>
@@ -41,6 +45,7 @@
     <!-- GPL 版（x264・x265・SRT 入り）。ffmpeg.exe は録画・配信に使う -->
     <None Include="$(FFmpegRoot)/x-$(FFmpegArch)-gpl/*/bin/*.dll" Link="ffmpeg/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="$(FFmpegRoot)/x-$(FFmpegArch)-gpl/*/bin/ffmpeg.exe" Link="ffmpeg/ffmpeg.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(CameraRoot)/$(CameraArch)/KeyCueCamera.dll" Link="camera/KeyCueCamera.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="Exists('$(CameraRoot)/$(CameraArch)/KeyCueCamera.dll')" />
     <None Include="../../LICENSE" Link="LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="../../THIRD_PARTY_NOTICES.md" Link="THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="$(FFmpegRoot)/x-$(FFmpegArch)-gpl/*/LICENSE.txt" Link="ffmpeg/LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

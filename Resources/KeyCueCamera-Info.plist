@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>ja</string>
+	<key>CFBundleDisplayName</key>
+	<string>KeyCue 仮想カメラ</string>
+	<key>CFBundleExecutable</key>
+	<string>jp.ic2.keycue.camera</string>
+	<key>CFBundleIdentifier</key>
+	<string>jp.ic2.keycue.camera</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>KeyCue</string>
+	<key>CFBundlePackageType</key>
+	<string>SYSX</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>NSSystemExtensionUsageDescription</key>
+	<string>KeyCue のプログラムの映像を、ほかのアプリでカメラ「KeyCue」として使えるようにします。</string>
+	<key>CMIOExtension</key>
+	<dict>
+		<key>CMIOExtensionMachServiceName</key>
+		<string>TEAMID.jp.ic2.keycue.camera</string>
+	</dict>
+</dict>
+</plist>

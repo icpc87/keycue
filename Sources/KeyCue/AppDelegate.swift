@@ -123,6 +123,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         // アップデートを選んでいたら、終了後に新しい版と入れ替える
         Updater.shared.applicationWillTerminate()
+        model.virtualCamera.stop()
         // 録画中のファイルを書き終えてから終わる
         model.feed.stopEverything()
     }

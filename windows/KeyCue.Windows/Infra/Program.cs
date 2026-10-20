@@ -15,6 +15,12 @@ public static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        // 仮想カメラを入れる（管理者として起動されたとき）
+        if (args.Length >= 2 && args[0] == "--install-camera")
+        {
+            Environment.Exit(Output.VirtualCamera.Install(args[1]));
+            return;
+        }
         Prefs.Load();
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
 #pragma warning disable WPF0001
