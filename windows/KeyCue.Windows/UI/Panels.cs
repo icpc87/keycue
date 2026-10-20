@@ -107,7 +107,9 @@ public sealed class TopBar : DockPanel
     private readonly Button videoMenu;
     private readonly Button videoToggle;
     private readonly Button pageMenu;
+    private readonly OutputButtons outputs;
     private bool syncing;
+    private bool compact;
 
     public TopBar(AppModel model, MainWindow window)
     {
@@ -115,6 +117,27 @@ public sealed class TopBar : DockPanel
         this.window = window;
         LastChildFill = false;
         Margin = new Thickness(0, 0, 0, 8);
+        ClipToBounds = true;
+
+        // 右側（全停止・録画・配信・仮想カメラ・設定・ページ）を先に並べる。DockPanel は先に入れたものに場所を渡すので、
+        // 狭いときは左側（出力デバイスなど）が縮み、右側のボタンは隠れない
+        var stop = Theme.Button("■ 全停止", () => model.StopAll(false), "全キーをフェードアウト（ESC）。Shift+ESC で即停止");
+        DockPanel.SetDock(stop, Dock.Right);
+        Children.Add(stop);
+        outputs = new OutputButtons(model, window);
+        DockPanel.SetDock(outputs, Dock.Right);
+        Children.Add(outputs);
+        var settings = Theme.Button("", () => window.ShowSettings(0), "設定（Ctrl+,）");
+        settings.Content = Icons.Make(Icons.Settings, 14);
+        DockPanel.SetDock(settings, Dock.Right);
+        Children.Add(settings);
+        pageMenu = Theme.Button("", () => { });
+        pageMenu.Click += (_, _) => PageMenu().IsOpen = true;
+        pageMenu.ToolTip = "ページを切り替え（Ctrl+← / Ctrl+→）";
+        pageMenu.MaxWidth = 200;
+        DockPanel.SetDock(pageMenu, Dock.Right);
+        Children.Add(pageMenu);
+
         var pages = Theme.Button("", () => window.TogglePages(), "プレイリスト（ページ）の表示／非表示（Ctrl+Alt+L）");
         pages.Content = Icons.Make(Icons.Pages, 14);
         Children.Add(pages);
@@ -136,21 +159,8 @@ public sealed class TopBar : DockPanel
         videoToggle = Theme.Button("", () => { if (model.Video.IsShowing) model.Video.Hide(); else model.Video.Show(); });
         Children.Add(videoToggle);
 
-        var stop = Theme.Button("■ 全停止", () => model.StopAll(false), "全キーをフェードアウト（ESC）。Shift+ESC で即停止");
-        DockPanel.SetDock(stop, Dock.Right);
-        Children.Add(stop);
-        var outputs = new OutputButtons(model, window);
-        DockPanel.SetDock(outputs, Dock.Right);
-        Children.Add(outputs);
-        var settings = Theme.Button("", () => window.ShowSettings(0), "設定（Ctrl+,）");
-        settings.Content = Icons.Make(Icons.Settings, 14);
-        DockPanel.SetDock(settings, Dock.Right);
-        Children.Add(settings);
-        pageMenu = Theme.Button("", () => { });
-        pageMenu.Click += (_, _) => PageMenu().IsOpen = true;
-        pageMenu.ToolTip = "ページを切り替え（Ctrl+← / Ctrl+→）";
-        DockPanel.SetDock(pageMenu, Dock.Right);
-        Children.Add(pageMenu);
+        // 狭いときは、左側を縮め、ボタンの文字を短くする
+        SizeChanged += (_, _) => ApplyWidth();
 
         model.AudioChanged += Sync;
         model.PagesChanged += Sync;
@@ -170,9 +180,21 @@ public sealed class TopBar : DockPanel
         master.Value = model.MasterVolume;
         var outs = model.Video.Outputs;
         videoMenu.Content = "映像: " + (outs.Count == 0 ? "なし" : outs.Count == 1 ? model.Video.Label(outs[0]) : $"{outs.Count} か所");
-        videoToggle.Content = model.Video.IsShowing ? "映像出力を閉じる" : "映像出力を開く";
+        videoToggle.Content = compact ? (model.Video.IsShowing ? "出力を閉じる" : "出力を開く") : model.Video.IsShowing ? "映像出力を閉じる" : "映像出力を開く";
         pageMenu.Content = $"{model.CurrentPage + 1}. {model.CurrentPageName}";
         syncing = false;
+    }
+
+    private void ApplyWidth()
+    {
+        var narrow = ActualWidth < 1180;
+        if (narrow == compact) return;
+        compact = narrow;
+        device.Width = narrow ? 150 : 230;
+        master.Width = narrow ? 70 : 110;
+        pageMenu.MaxWidth = narrow ? 120 : 200;
+        outputs.Compact = narrow;
+        Sync();
     }
 
     private ContextMenu VideoMenu()

@@ -127,7 +127,10 @@ public sealed class MonitorsBar : Grid
         previewBox.MaxWidth = p * 16 / 9;
         programBox.MaxHeight = l;
         programBox.MaxWidth = l * 16 / 9;
-        RowDefinitions[0].Height = new GridLength(Math.Max(showPreview ? p : 0, showProgram ? l : 0) + 24);
+        // 高さは決めた大きさまで。画面の高さが足りなければ（MaxHeight で絞られたら）16:9 のまま縮む
+        RowDefinitions[0].Height = new GridLength(1, GridUnitType.Star);
+        RowDefinitions[0].MaxHeight = Math.Max(showPreview ? p : 0, showProgram ? l : 0) + 24;
+        Height = RowDefinitions[0].MaxHeight + 10;
         ColumnDefinitions[0].Width = showPreview ? new GridLength(p, GridUnitType.Star) : new GridLength(0);
         ColumnDefinitions[4].Width = showProgram ? new GridLength(l, GridUnitType.Star) : new GridLength(0);
     }

@@ -54,11 +54,26 @@ public sealed class OutputButtons : StackPanel
         if (errors.Count > 0) window.Dialogs.Info(kind == OutputKind.Record ? "録画を始められません" : "配信を始められません", string.Join("\n", errors));
     }
 
+    /// <summary>上の帯が狭いときは、ボタンの文字を短くする（ボタンが隠れないように）</summary>
+    public bool Compact
+    {
+        get => compact;
+        set
+        {
+            if (compact == value) return;
+            compact = value;
+            foreach (var b in new[] { record, stream, camera }) b.Padding = value ? new Thickness(6, 3, 6, 3) : new Thickness(10, 3, 10, 3);
+            Sync();
+        }
+    }
+    private bool compact;
+
     private void Sync()
     {
-        Set(record, OutputKind.Record, "● 録画", Theme.Danger);
-        Set(stream, OutputKind.Stream, "((•)) 配信", Theme.Live);
-        camera.Content = model.Camera.Status == VirtualCamera.State.Failed ? "仮想カメラ  ⚠" : "仮想カメラ";
+        Set(record, OutputKind.Record, compact ? "●" : "● 録画", Theme.Danger);
+        Set(stream, OutputKind.Stream, compact ? "((•))" : "((•)) 配信", Theme.Live);
+        var cam = compact ? "カメラ" : "仮想カメラ";
+        camera.Content = model.Camera.Status == VirtualCamera.State.Failed ? cam + "  ⚠" : cam;
         if (model.Camera.Status == VirtualCamera.State.Running)
         {
             camera.Foreground = Brushes.Black;
@@ -79,7 +94,7 @@ public sealed class OutputButtons : StackPanel
         if (running.Count > 0)
         {
             var t = DateTime.Now - running.Min(o => o.StartedAt);
-            b.Content = $"{label}  {(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00}" + (running.Count > 1 ? $"（{running.Count}）" : "");
+            b.Content = $"{label}  {(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00}" + (running.Count > 1 && !compact ? $"（{running.Count}）" : "");
             b.Foreground = Brushes.White;
             b.Background = onColor;
         }

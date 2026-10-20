@@ -230,6 +230,8 @@ public sealed class ThumbCard : Border
 
     private void Rebuild()
     {
+        // 前に作った枠からはずしてから作り直す（WPF は、ほかの枠に付いたままの部品を付けられない）
+        (preview.Parent as Panel)?.Children.Remove(preview);
         preview.Children.Clear();
         Build();
     }
@@ -445,6 +447,7 @@ public sealed class LayerCardsView : CardViewBase
     {
         monitors = new MonitorsBar(model);
         Unloaded += (_, _) => monitors.Detach();
+        SizeChanged += (_, e) => monitors.MaxHeight = Math.Max(110, e.NewSize.Height * 0.45);
     }
 
     protected override void Rebuild()
@@ -467,6 +470,8 @@ public sealed class LayerCardsView : CardViewBase
         if (Prefs.LayerMonitors != "none")
         {
             monitors.Refresh();
+            // 画面の高さが足りないときは、レイヤーの一覧に場所を残す（モニターは全体の 45% まで）
+            monitors.MaxHeight = ActualHeight > 0 ? Math.Max(110, ActualHeight * 0.45) : double.PositiveInfinity;
             SetDock(monitors, Dock.Top);
             Children.Add(monitors);
         }
