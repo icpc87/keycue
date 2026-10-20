@@ -74,12 +74,13 @@ private struct LayerRow: View {
     @State private var targeted = false
     @ObservedObject private var sizes = LayerSizes.shared
     @State private var contentHeight: CGFloat = 0
+    @State private var scaleStart: Double?
 
     var body: some View {
         let playing = codes.filter { live.playing.contains($0) }
         let width = cardWidth * sizes.scale(layer)
         VStack(spacing: 0) {
-            HStack(alignment: .center, spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("レイヤー \(layer)").font(.system(size: 13, weight: .semibold))
                     if layer == 9 || layer == 1 {
@@ -90,17 +91,16 @@ private struct LayerRow: View {
                             .font(.caption).lineLimit(1)
                             .foregroundStyle(Color(red: 1, green: 0.6, blue: 0.3))
                     }
-                    HStack(spacing: 6) {
-                        Button { sizes.stepScale(layer, -1) } label: { Image(systemName: "minus.magnifyingglass") }
-                            .disabled(sizes.scale(layer) <= LayerSizes.scaleSteps.first!)
-                        Button { sizes.stepScale(layer, 1) } label: { Image(systemName: "plus.magnifyingglass") }
-                            .disabled(sizes.scale(layer) >= LayerSizes.scaleSteps.last!)
-                    }
-                    .buttonStyle(.borderless)
-                    .help("このレイヤーのカードを小さく・大きくします")
                 }
                 .frame(width: 100, alignment: .leading)
                 ClearLayerCard(model: model, layer: layer, playing: playing, width: width)
+                // 左右にドラッグして、この段のカードの大きさを変える（ダブルクリックで元の大きさ）
+                SideHandle(onChange: { dx in
+                    if scaleStart == nil { scaleStart = sizes.scale(layer) }
+                    sizes.setScale(layer, scaleStart! + Double(dx) / Double(cardWidth))
+                }, onEnd: { scaleStart = nil }, onReset: { sizes.setScale(layer, 1) },
+                           help: "左右にドラッグして、このレイヤーのカードの大きさを変えます（ダブルクリックで元の大きさ）",
+                           height: width * 9 / 16 + 24)
                 if codes.isEmpty {
                     Text("カードをここへドラッグすると、レイヤー \(layer) になります")
                         .font(.caption).foregroundStyle(.tertiary)
@@ -210,25 +210,38 @@ private struct MonitorsBar: View {
     private static let minHeight = 90.0, maxHeight = 720.0
     private static func clamp(_ h: Double) -> Double { min(max(h, minHeight), maxHeight) }
 
+    /// 欄の横幅（GeometryReader で測る）。入りきらなければ、2 つの大きさの比を保ったまま縮める
+    @State private var available: CGFloat = 0
+
     var body: some View {
         let showPreview = monitors == "both" || monitors == "preview"
         let showProgram = monitors == "both" || monitors == "program"
-        let tallest = max(showPreview ? previewHeight : 0, showProgram ? programHeight : 0)
+        let fixed: CGFloat = (showPreview ? 12 + 162 + 6 : 0) + (showProgram ? 12 + 6 : 0) + 20
+        let natural = CGFloat((showPreview ? previewHeight : 0) + (showProgram ? programHeight : 0)) * 16 / 9
+        let k = available > 0 ? Double(min(1, max(0.15, (available - fixed) / max(natural, 1)))) : 1
+        let tallest = max(showPreview ? previewHeight : 0, showProgram ? programHeight : 0) * k
         VStack(spacing: 0) {
+            GeometryReader { g in
             HStack(alignment: .center, spacing: 6) {
                 Spacer(minLength: 0)
                 if showPreview {
-                    monitor(title: "プレビュー", color: .green, height: previewHeight) { PreviewComposite(model: model, live: live) }
+                    monitor(title: "プレビュー", color: .green, height: previewHeight * k) { PreviewComposite(model: model, live: live) }
                     // 右へ引くと大きく
-                    SideHandle { dx in resize(preview: true, by: dx) } onEnd: { dragStart = nil }
+                    SideHandle(onChange: { dx in resize(preview: true, by: dx) }, onEnd: { dragStart = nil }, onReset: { previewHeight = 180 },
+                               help: "左右にドラッグして、プレビューの大きさを変えます（縦横比はそのまま。ダブルクリックで元の大きさ）")
                     controls.padding(.horizontal, 6)
                 }
                 if showProgram {
                     // 左へ引くと大きく
-                    SideHandle { dx in resize(preview: false, by: -dx) } onEnd: { dragStart = nil }
-                    monitor(title: "ライブ", color: .red, height: programHeight) { MonitorView(view: model.video.programView) }
+                    SideHandle(onChange: { dx in resize(preview: false, by: -dx) }, onEnd: { dragStart = nil }, onReset: { programHeight = 180 },
+                               help: "左右にドラッグして、ライブの大きさを変えます（縦横比はそのまま。ダブルクリックで元の大きさ）")
+                    monitor(title: "ライブ", color: .red, height: programHeight * k) { MonitorView(view: model.video.programView) }
                 }
                 Spacer(minLength: 0)
+            }
+            .frame(width: g.size.width, height: g.size.height)
+            .onAppear { available = g.size.width }
+            .onChange(of: g.size.width) { _, w in available = w }
             }
             .frame(height: tallest + 22)
             BarHeightHandle(
@@ -257,10 +270,9 @@ private struct MonitorsBar: View {
 
     private func monitor<Content: View>(title: String, color: Color, height: Double, @ViewBuilder content: () -> Content) -> some View {
         VStack(spacing: 4) {
-            // 16:9 のまま、決めた大きさまで。場所が足りなければ縮む
+            // 16:9
             content()
-                .aspectRatio(16 / 9, contentMode: .fit)
-                .frame(maxWidth: height * 16 / 9, maxHeight: height)
+                .frame(width: height * 16 / 9, height: height)
                 .background(Color.black)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
                 .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(color.opacity(0.7), lineWidth: 1.5))
@@ -380,7 +392,6 @@ final class LayerSizes: ObservableObject {
     static let shared = LayerSizes()
     private static let heightsKey = "pref.layerHeights"
     private static let scalesKey = "pref.layerCardScales"
-    static let scaleSteps: [Double] = [0.5, 0.65, 0.8, 1, 1.25, 1.5, 1.75, 2]
 
     /// 段の高さ（入っていなければ、カードが全部見える高さ）
     @Published private(set) var heights: [Int: Double]
@@ -403,12 +414,10 @@ final class LayerSizes: ObservableObject {
         save(heights, LayerSizes.heightsKey)
     }
 
-    /// カードを 1 段階大きく（+1）・小さく（-1）
-    func stepScale(_ layer: Int, _ by: Int) {
-        let steps = LayerSizes.scaleSteps
-        let i = steps.firstIndex { $0 >= scale(layer) - 0.001 } ?? 3
-        let v = steps[min(max(i + by, 0), steps.count - 1)]
-        scales[layer] = v == 1 ? nil : v
+    /// カードの大きさ（0.4〜3 倍）
+    func setScale(_ layer: Int, _ v: Double) {
+        let s = min(max(v, 0.4), 3)
+        scales[layer] = abs(s - 1) < 0.01 ? nil : s
         save(scales, LayerSizes.scalesKey)
     }
 
@@ -450,6 +459,10 @@ private struct RowResizeHandle: View {
 private struct SideHandle: View {
     let onChange: (CGFloat) -> Void
     let onEnd: () -> Void
+    var onReset: (() -> Void)? = nil
+    var help = "左右にドラッグして、この画面の大きさを変えます（縦横比はそのまま）"
+    /// つまみの高さ（nil なら並びの高さいっぱい）
+    var height: CGFloat? = nil
     @State private var hover = false
     @State private var dragging = false
 
@@ -458,7 +471,8 @@ private struct SideHandle: View {
             .fill(Color.white.opacity(hover || dragging ? 0.35 : 0.12))
             .frame(width: 4, height: 44)
             .frame(width: 12)
-            .frame(maxHeight: .infinity)
+            .frame(height: height)
+            .frame(maxHeight: height == nil ? .infinity : nil)
             .contentShape(Rectangle())
             .onHover { inside in
                 hover = inside
@@ -473,7 +487,8 @@ private struct SideHandle: View {
                     dragging = false
                     onEnd()
                 })
-            .help("左右にドラッグして、この画面の大きさを変えます（縦横比はそのまま）")
+            .onTapGesture(count: 2) { onReset?() }
+            .help(help)
     }
 }
 

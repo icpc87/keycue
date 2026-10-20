@@ -496,16 +496,6 @@ public sealed class LayerCardsView : CardViewBase
         }
         // このレイヤーのカードの大きさ
         var scale = LayerSizes.Scale(layer);
-        var smaller = Theme.Button("－", () => { LayerSizes.StepScale(layer, -1); QueueRebuild(); }, "このレイヤーのカードを小さくします");
-        var larger = Theme.Button("＋", () => { LayerSizes.StepScale(layer, 1); QueueRebuild(); }, "このレイヤーのカードを大きくします");
-        smaller.IsEnabled = scale > LayerSizes.Steps[0];
-        larger.IsEnabled = scale < LayerSizes.Steps[^1];
-        foreach (var b in new[] { smaller, larger })
-        {
-            b.Padding = new Thickness(6, 0, 6, 0);
-            b.Margin = new Thickness(0, 3, 4, 0);
-        }
-        head.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Children = { smaller, larger } });
         var dock = new DockPanel();
         DockPanel.SetDock(head, Dock.Left);
         dock.Children.Add(head);
@@ -513,6 +503,31 @@ public sealed class LayerCardsView : CardViewBase
         var clear = ClearCard(layer, playing, width * scale);
         DockPanel.SetDock(clear, Dock.Left);
         dock.Children.Add(clear);
+        // 左右にドラッグして、この段のカードの大きさを変える（ドラッグ中は拡大して見せ、離したら作り直す）
+        FrameworkElement? cardsArea = null;
+        var newScale = scale;
+        var sizeGrip = DragGrip.Make(false, "左右にドラッグして、このレイヤーのカードの大きさを変えます（ダブルクリックで元の大きさ）",
+            () => newScale = scale,
+            d =>
+            {
+                newScale = Math.Clamp(scale + d / width, 0.4, 3);
+                var t = new ScaleTransform(newScale / scale, newScale / scale);
+                ((FrameworkElement)clear).LayoutTransform = t;
+                if (cardsArea != null) cardsArea.LayoutTransform = t;
+            },
+            () =>
+            {
+                LayerSizes.SetScale(layer, newScale);
+                QueueRebuild();
+            },
+            () =>
+            {
+                LayerSizes.SetScale(layer, 1);
+                QueueRebuild();
+            });
+        sizeGrip.Margin = new Thickness(0, 0, 8, 0);
+        DockPanel.SetDock(sizeGrip, Dock.Left);
+        dock.Children.Add(sizeGrip);
         if (codes.Count == 0)
         {
             dock.Children.Add(new TextBlock { Text = $"カードをここへドラッグすると、レイヤー {layer} になります", Foreground = Theme.Tertiary, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 8, 0, 8) });
@@ -522,6 +537,7 @@ public sealed class LayerCardsView : CardViewBase
             // 段に入りきらなければ折り返して次の行へ（横にはみ出して隠れないように）。段の高さを決めてあれば、その中で縦にスクロール
             var line = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
             foreach (var c in codes) line.Children.Add(Card(c, width * scale, true));
+            cardsArea = line;
             scroller = new ScrollViewer { Content = line, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Focusable = false };
             if (LayerSizes.Height(layer) is { } h) scroller.Height = h;
             dock.Children.Add(scroller);

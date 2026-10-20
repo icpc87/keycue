@@ -48,10 +48,10 @@ public sealed class MonitorsBar : Grid
         Grid.SetColumn(programPanel, 4);
 
         // 画面の横のつまみ：その画面だけ大きさを変える（プレビューは右へ、ライブは左へ引くと大きく）
-        previewGrip = Grip(false, "左右にドラッグして、この画面の大きさを変えます（縦横比はそのまま）",
-            d => Prefs.Set("previewMonitorHeight", Clamp(dragStart.Preview + d * 9 / 16)), null);
-        programGrip = Grip(false, "左右にドラッグして、この画面の大きさを変えます（縦横比はそのまま）",
-            d => Prefs.Set("programMonitorHeight", Clamp(dragStart.Program - d * 9 / 16)), null);
+        previewGrip = Grip(false, "左右にドラッグして、この画面の大きさを変えます（縦横比はそのまま。ダブルクリックで元の大きさ）",
+            d => Prefs.Set("previewMonitorHeight", Clamp(dragStart.Preview + d * 9 / 16)), () => Prefs.Set("previewMonitorHeight", 180.0));
+        programGrip = Grip(false, "左右にドラッグして、この画面の大きさを変えます（縦横比はそのまま。ダブルクリックで元の大きさ）",
+            d => Prefs.Set("programMonitorHeight", Clamp(dragStart.Program - d * 9 / 16)), () => Prefs.Set("programMonitorHeight", 180.0));
         Grid.SetColumn(previewGrip, 1);
         Grid.SetColumn(programGrip, 3);
         // 下のふち：両方を同じ割合で大きく・小さく（ダブルクリックで元の大きさ）
