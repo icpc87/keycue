@@ -496,6 +496,8 @@ public sealed class LayerCardsView : CardViewBase
         }
         // このレイヤーのカードの大きさ
         var scale = LayerSizes.Scale(layer);
+        // 段の高さを決めてあれば、カードもその高さに入る大きさに縮める（16:9 のまま。名前の帯 24 とカードの上下の余白を除く）
+        if (LayerSizes.Height(layer) is { } rowHeight) scale = Math.Min(scale, Math.Max(40, (rowHeight - 24 - 18) * 16 / 9) / width);
         var dock = new DockPanel();
         DockPanel.SetDock(head, Dock.Left);
         dock.Children.Add(head);
@@ -507,7 +509,12 @@ public sealed class LayerCardsView : CardViewBase
         FrameworkElement? cardsArea = null;
         var newScale = scale;
         var sizeGrip = DragGrip.Make(false, "左右にドラッグして、このレイヤーのカードの大きさを変えます（ダブルクリックで元の大きさ）",
-            () => newScale = scale,
+            () =>
+            {
+                newScale = scale;
+                // 段の高さで縮んでいるときは、高さの決まりを外してカードの大きさで決める
+                if (LayerSizes.Height(layer) != null) LayerSizes.SetHeight(layer, null);
+            },
             d =>
             {
                 newScale = Math.Clamp(scale + d / width, 0.4, 3);
@@ -550,11 +557,16 @@ public sealed class LayerCardsView : CardViewBase
         var grip = DragGrip.Make(true, "ドラッグでこの段の高さを変えます（ダブルクリックで、カードが全部見える高さに戻します）",
             () => heightStart = double.IsNaN(dock.Height) ? dock.ActualHeight : dock.Height,
             d => dock.Height = Math.Max(40, heightStart + d),
-            () => LayerSizes.SetHeight(layer, dock.Height),
+            () =>
+            {
+                LayerSizes.SetHeight(layer, dock.Height);
+                QueueRebuild();   // カードを高さに合わせた大きさで作り直す
+            },
             () =>
             {
                 LayerSizes.SetHeight(layer, null);
                 dock.Height = double.NaN;
+                QueueRebuild();
             });
         var body = new DockPanel();
         DockPanel.SetDock(grip, Dock.Bottom);

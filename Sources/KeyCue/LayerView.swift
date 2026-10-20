@@ -78,7 +78,12 @@ private struct LayerRow: View {
 
     var body: some View {
         let playing = codes.filter { live.playing.contains($0) }
-        let width = cardWidth * sizes.scale(layer)
+        // 段の高さを決めてあれば、カードもその高さに入る大きさに縮める（16:9 のまま。名前の帯 24 と上下の余白を除く）
+        let width: CGFloat = {
+            let w = cardWidth * sizes.scale(layer)
+            guard let h = sizes.heights[layer] else { return w }
+            return min(w, max(40, (CGFloat(h) - 24 - 8) * 16 / 9))
+        }()
         VStack(spacing: 0) {
             HStack(alignment: .top, spacing: 8) {
                 VStack(alignment: .leading, spacing: 3) {
@@ -96,7 +101,9 @@ private struct LayerRow: View {
                 ClearLayerCard(model: model, layer: layer, playing: playing, width: width)
                 // 左右にドラッグして、この段のカードの大きさを変える（ダブルクリックで元の大きさ）
                 SideHandle(onChange: { dx in
-                    if scaleStart == nil { scaleStart = sizes.scale(layer) }
+                    if scaleStart == nil { scaleStart = Double(width / cardWidth) }   // いま見えている大きさから
+                    // 段の高さで縮んでいるときは、高さの決まりを外してカードの大きさで決める
+                    if sizes.heights[layer] != nil { sizes.setHeight(layer, nil) }
                     sizes.setScale(layer, scaleStart! + Double(dx) / Double(cardWidth))
                 }, onEnd: { scaleStart = nil }, onReset: { sizes.setScale(layer, 1) },
                            help: "左右にドラッグして、このレイヤーのカードの大きさを変えます（ダブルクリックで元の大きさ）",
