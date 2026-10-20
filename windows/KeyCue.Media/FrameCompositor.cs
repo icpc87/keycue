@@ -12,22 +12,40 @@ public sealed class CompositeLayer
     public double Opacity { get; init; } = 1;
     /// <summary>時計回りの回転（0 / 90 / 180 / 270）</summary>
     public int Rotation { get; init; }
+    /// <summary>透明な部分がない（ふつうの動画・写真）。全体を覆うなら、下のレイヤーは描かなくてよい</summary>
+    public bool Opaque { get; init; }
 }
 
 public enum FitMode { Fit, Fill, Stretch }
 
-/// <summary>レイヤーを重ねて、出力の大きさの 1 枚の絵（BGRA・アルファ掛け済み）にする。録画・配信・仮想カメラが使う</summary>
-public static class FrameCompositor
+/// <summary>レイヤーを重ねて、出力の大きさの 1 枚の絵（BGRA・アルファ掛け済み）にする。録画・配信・仮想カメラが使う。
+/// フル HD・30 コマで毎回動くので、隠れるレイヤーは描かず、不透明な点はそのまま写し、混ぜる計算は整数の掛け算とずらしで行う</summary>
+public static unsafe class FrameCompositor
 {
+    /// <summary>この行数ずつ、ほかのコアに分けて描く（1 行ずつだと受け渡しの手間のほうが大きい）</summary>
+    private const int RowsPerTask = 32;
+
     /// <summary>layers は奥から手前の順</summary>
     public static void Compose(byte[] dst, int width, int height, (byte R, byte G, byte B) background, IReadOnlyList<CompositeLayer> layers, FitMode fit)
     {
-        // 背景
-        var bg = (uint)(0xFF000000 | ((uint)background.R << 16) | ((uint)background.G << 8) | background.B);
-        var span = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, uint>(dst.AsSpan(0, width * height * 4));
-        span.Fill(bg);
-        foreach (var layer in layers)
+        // 全体を不透明に覆うレイヤーがあれば、それより下（背景も）は見えないので描かない
+        var first = 0;
+        for (var i = layers.Count - 1; i >= 0; i--)
         {
+            if (CoversOpaque(layers[i], width, height, fit))
+            {
+                first = i;
+                break;
+            }
+        }
+        if (first == 0 && !(layers.Count > 0 && CoversOpaque(layers[0], width, height, fit)))
+        {
+            var bg = 0xFF000000u | ((uint)background.R << 16) | ((uint)background.G << 8) | background.B;
+            System.Runtime.InteropServices.MemoryMarshal.Cast<byte, uint>(dst.AsSpan(0, width * height * 4)).Fill(bg);
+        }
+        for (var i = first; i < layers.Count; i++)
+        {
+            var layer = layers[i];
             var opacity = Math.Clamp(layer.Opacity, 0, 1);
             if (opacity <= 0.002) continue;
             if (layer.Fill is { } f) FillRect(dst, width, height, f, opacity);
@@ -35,25 +53,57 @@ public static class FrameCompositor
         }
     }
 
+    private static bool CoversOpaque(CompositeLayer layer, int width, int height, FitMode fit)
+    {
+        if (layer.Opacity < 0.998) return false;
+        if (layer.Fill != null) return true;
+        if (!layer.Opaque || layer.Pixels == null || layer.Width <= 0 || layer.Height <= 0) return false;
+        var rotated = layer.Rotation % 180 == 90;
+        var (px, py, pw, ph) = Placement(rotated ? layer.Height : layer.Width, rotated ? layer.Width : layer.Height, width, height, fit);
+        return px <= 0 && py <= 0 && px + pw >= width && py + ph >= height;
+    }
+
+    /// <summary>v * a / 255 を整数の掛け算とずらしで（0〜255 の範囲で誤差 1 以下）</summary>
+    private static uint Mul255(uint v, uint a)
+    {
+        var t = v * a + 128;
+        return (t + (t >> 8)) >> 8;
+    }
+
     private static void FillRect(byte[] dst, int width, int height, (byte R, byte G, byte B) c, double opacity)
     {
-        var a = (int)Math.Round(opacity * 255);
+        var a = (uint)Math.Round(opacity * 255);
         var inv = 255 - a;
-        var r = c.R * a / 255;
-        var g = c.G * a / 255;
-        var b = c.B * a / 255;
-        Parallel.For(0, height, y =>
+        var color = ((uint)c.R << 16) | ((uint)c.G << 8) | c.B;
+        fixed (byte* p = dst)
         {
-            var row = y * width * 4;
-            for (var x = 0; x < width; x++)
+            var basePtr = (nint)p;
+            var tasks = (height + RowsPerTask - 1) / RowsPerTask;
+            Parallel.For(0, tasks, t =>
             {
-                var i = row + x * 4;
-                dst[i] = (byte)(b + dst[i] * inv / 255);
-                dst[i + 1] = (byte)(g + dst[i + 1] * inv / 255);
-                dst[i + 2] = (byte)(r + dst[i + 2] * inv / 255);
-                dst[i + 3] = 255;
-            }
-        });
+                var y1 = Math.Min(height, (t + 1) * RowsPerTask);
+                for (var y = t * RowsPerTask; y < y1; y++)
+                {
+                    var row = (uint*)basePtr + (long)y * width;
+                    if (a >= 255)
+                    {
+                        new Span<uint>(row, width).Fill(0xFF000000u | color);
+                        continue;
+                    }
+                    var b = Mul255(c.B, a);
+                    var g = Mul255(c.G, a);
+                    var r = Mul255(c.R, a);
+                    for (var x = 0; x < width; x++)
+                    {
+                        var d = row[x];
+                        row[x] = 0xFF000000u
+                            | ((r + Mul255((d >> 16) & 0xFF, inv)) << 16)
+                            | ((g + Mul255((d >> 8) & 0xFF, inv)) << 8)
+                            | (b + Mul255(d & 0xFF, inv));
+                    }
+                }
+            });
+        }
     }
 
     /// <summary>レイヤーの絵の、出力での位置（縦横比に合わせて）</summary>
@@ -78,40 +128,84 @@ public static class FrameCompositor
         var y1 = Math.Min(py + ph, height);
         if (x1 <= x0 || y1 <= y0) return;
         var src = layer.Pixels!;
-        var stride = layer.Stride;
-        var a = (int)Math.Round(opacity * 256);
-        // 出力の x / y ごとに、元の絵のどこを取るか（最近傍。同じ大きさなら 1:1）
-        var mapX = new int[x1 - x0];
-        for (var x = x0; x < x1; x++) mapX[x - x0] = Math.Min((int)((x - px + 0.5) * srcW / pw), srcW - 1);
+        if (src.Length < layer.Width * layer.Height * 4) return;
         var lw = layer.Width;
         var lh = layer.Height;
         var rot = layer.Rotation;
-        Parallel.For(y0, y1, y =>
+        // 出力の x / y ごとに、元の絵のどこを取るか（最近傍。同じ大きさなら 1:1）
+        var mapX = new int[x1 - x0];
+        for (var x = x0; x < x1; x++) mapX[x - x0] = Math.Min((int)((x - px + 0.5) * srcW / pw), srcW - 1);
+        var a = (uint)Math.Round(opacity * 255);
+        var full = a >= 255;
+        var opaque = layer.Opaque && full;
+
+        fixed (byte* dp = dst, sp = src)
+        fixed (int* mp = mapX)
         {
-            var sy = Math.Min((int)((y - py + 0.5) * srcH / ph), srcH - 1);
-            var row = y * width * 4;
-            for (var x = x0; x < x1; x++)
+            var dBase = (nint)dp;
+            var sBase = (nint)sp;
+            var mBase = (nint)mp;
+            var rows = y1 - y0;
+            var tasks = (rows + RowsPerTask - 1) / RowsPerTask;
+            Parallel.For(0, tasks, t =>
             {
-                var sx = mapX[x - x0];
-                // 回転前の元の絵での位置
-                int ux, uy;
-                switch (rot)
+                var map = (int*)mBase;
+                var s0 = (uint*)sBase;
+                var yEnd = Math.Min(y1, y0 + (t + 1) * RowsPerTask);
+                for (var y = y0 + t * RowsPerTask; y < yEnd; y++)
                 {
-                    case 90: ux = sy; uy = lh - 1 - sx; break;
-                    case 180: ux = lw - 1 - sx; uy = lh - 1 - sy; break;
-                    case 270: ux = lw - 1 - sy; uy = sx; break;
-                    default: ux = sx; uy = sy; break;
+                    var sy = Math.Min((int)((y - py + 0.5) * srcH / ph), srcH - 1);
+                    var drow = (uint*)dBase + (long)y * width;
+                    if (rot == 0)
+                    {
+                        var srow = s0 + (long)sy * lw;
+                        if (opaque)
+                        {
+                            // 不透明：そのまま写す
+                            for (var x = x0; x < x1; x++) drow[x] = srow[map[x - x0]] | 0xFF000000u;
+                            continue;
+                        }
+                        for (var x = x0; x < x1; x++) drow[x] = Blend(drow[x], srow[map[x - x0]], a, full);
+                    }
+                    else
+                    {
+                        for (var x = x0; x < x1; x++)
+                        {
+                            var sx = map[x - x0];
+                            int ux, uy;
+                            switch (rot)
+                            {
+                                case 90: ux = sy; uy = lh - 1 - sx; break;
+                                case 180: ux = lw - 1 - sx; uy = lh - 1 - sy; break;
+                                default: ux = lw - 1 - sy; uy = sx; break;
+                            }
+                            var s = s0[(long)uy * lw + ux];
+                            drow[x] = opaque ? s | 0xFF000000u : Blend(drow[x], s, a, full);
+                        }
+                    }
                 }
-                var s = uy * stride + ux * 4;
-                var sa = src[s + 3] * a >> 8;
-                if (sa == 0) continue;
-                var d = row + x * 4;
-                var inv = 255 - sa;
-                dst[d] = (byte)((src[s] * a >> 8) + dst[d] * inv / 255);
-                dst[d + 1] = (byte)((src[s + 1] * a >> 8) + dst[d + 1] * inv / 255);
-                dst[d + 2] = (byte)((src[s + 2] * a >> 8) + dst[d + 2] * inv / 255);
-                dst[d + 3] = 255;
-            }
-        });
+            });
+        }
+    }
+
+    /// <summary>アルファ掛け済みの s を、濃さ a（0〜255）で d の上に重ねる</summary>
+    private static uint Blend(uint d, uint s, uint a, bool full)
+    {
+        var sa = s >> 24;
+        if (!full) sa = Mul255(sa, a);
+        if (sa == 0) return d;
+        if (sa == 255 && full) return s | 0xFF000000u;
+        var inv = 255 - sa;
+        uint sb = s & 0xFF, sg = (s >> 8) & 0xFF, sr = (s >> 16) & 0xFF;
+        if (!full)
+        {
+            sb = Mul255(sb, a);
+            sg = Mul255(sg, a);
+            sr = Mul255(sr, a);
+        }
+        var b = sb + Mul255(d & 0xFF, inv);
+        var g = sg + Mul255((d >> 8) & 0xFF, inv);
+        var r = sr + Mul255((d >> 16) & 0xFF, inv);
+        return 0xFF000000u | (Math.Min(r, 255u) << 16) | (Math.Min(g, 255u) << 8) | Math.Min(b, 255u);
     }
 }

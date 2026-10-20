@@ -54,6 +54,8 @@ public sealed class ImageCue : VisualCue
     /// <summary>録画・配信用に画素にしたもの（一度だけ作る）</summary>
     internal byte[]? Pixels;
     internal int PixelWidth, PixelHeight;
+    /// <summary>透明な部分がない（合成で下のレイヤーを省ける）</summary>
+    internal bool PixelsOpaque;
 }
 
 public sealed class LiveVideoCue : VisualCue
@@ -687,14 +689,20 @@ public sealed class VideoOutput
                         ic.PixelHeight = converted.PixelHeight;
                         ic.Pixels = new byte[ic.PixelWidth * ic.PixelHeight * 4];
                         converted.CopyPixels(ic.Pixels, ic.PixelWidth * 4, 0);
+                        var opaque = true;
+                        for (var k = 3; k < ic.Pixels.Length; k += 4)
+                        {
+                            if (ic.Pixels[k] != 255) { opaque = false; break; }
+                        }
+                        ic.PixelsOpaque = opaque;
                     }
-                    output.Add(new CompositeLayer { Pixels = ic.Pixels, Width = ic.PixelWidth, Height = ic.PixelHeight, Opacity = opacity });
+                    output.Add(new CompositeLayer { Pixels = ic.Pixels, Width = ic.PixelWidth, Height = ic.PixelHeight, Opacity = opacity, Opaque = ic.PixelsOpaque });
                     break;
                 case VideoCue vc when vc.LastPixels != null:
-                    output.Add(new CompositeLayer { Pixels = vc.LastPixels, Width = vc.LastWidth, Height = vc.LastHeight, Opacity = opacity, Rotation = vc.Decoder.Rotation });
+                    output.Add(new CompositeLayer { Pixels = vc.LastPixels, Width = vc.LastWidth, Height = vc.LastHeight, Opacity = opacity, Rotation = vc.Decoder.Rotation, Opaque = !vc.Decoder.HasAlpha });
                     break;
                 case LiveVideoCue lc when lc.LastPixels != null:
-                    output.Add(new CompositeLayer { Pixels = lc.LastPixels, Width = lc.LastWidth, Height = lc.LastHeight, Opacity = opacity });
+                    output.Add(new CompositeLayer { Pixels = lc.LastPixels, Width = lc.LastWidth, Height = lc.LastHeight, Opacity = opacity, Opaque = true });
                     break;
             }
         }

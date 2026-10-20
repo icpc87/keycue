@@ -113,6 +113,7 @@ public class OutputArgsTests
 }
 
 /// <summary>実際に ffmpeg で録画・配信する（Mac ではビルドした ffmpeg と Homebrew の ffmpeg）</summary>
+[Collection("重いエンコード")]
 public class OutputProcessTests
 {
     private static string? MacFFmpeg()
@@ -212,6 +213,7 @@ public class OutputProcessTests
 }
 
 /// <summary>アプリの中でエンコードする録画・配信（Windows 版が使う）。Mac では Homebrew の FFmpeg ライブラリで確かめる</summary>
+[Collection("重いエンコード")]
 public class LibavOutputTests
 {
     private static bool Available => File.Exists("/opt/homebrew/lib/libavcodec.62.dylib") || OperatingSystem.IsWindows();
@@ -338,5 +340,70 @@ public class LibavOutputTests
         var info = Probe(received);
         Assert.Contains("codec_name=h264", info);
         Assert.Contains("codec_name=aac", info);
+    }
+}
+
+[Collection("重いエンコード")]
+public class FrameCompositorSpeedTests
+{
+    private static byte[] Solid(int w, int h, uint bgra)
+    {
+        var b = new byte[w * h * 4];
+        System.Runtime.InteropServices.MemoryMarshal.Cast<byte, uint>(b.AsSpan()).Fill(bgra);
+        return b;
+    }
+
+    /// <summary>テロップ：下の帯だけ半透明、ほかは透明（アルファ掛け済み）</summary>
+    private static byte[] Telop(int w, int h)
+    {
+        var b = new byte[w * h * 4];
+        var px = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, uint>(b.AsSpan());
+        for (var y = h * 3 / 4; y < h; y++)
+            for (var x = 0; x < w / 2; x++) px[y * w + x] = 0x80402010; // a=128
+        return b;
+    }
+
+    [Fact]
+    public void FullHdFourLayersIsFast()
+    {
+        var dst = new byte[1920 * 1080 * 4];
+        var layers = new List<CompositeLayer>
+        {
+            new() { Pixels = Solid(1280, 720, 0xFF203040), Width = 1280, Height = 720, Opaque = true },
+            new() { Pixels = Solid(1920, 1080, 0xFF405060), Width = 1920, Height = 1080, Opaque = true },
+            new() { Pixels = Telop(1280, 720), Width = 1280, Height = 720 },
+            new() { Pixels = Solid(1280, 720, 0xFF102030), Width = 1280, Height = 720, Opaque = true, Opacity = 0.5 },
+        };
+        FrameCompositor.Compose(dst, 1920, 1080, (0, 0, 0), layers, FitMode.Fit);
+        var sw = Stopwatch.StartNew();
+        for (var i = 0; i < 30; i++) FrameCompositor.Compose(dst, 1920, 1080, (0, 0, 0), layers, FitMode.Fit);
+        var perFrame = sw.Elapsed.TotalMilliseconds / 30;
+        Assert.True(perFrame < 12, $"1 コマ {perFrame:0.0} ms");
+    }
+
+    [Fact]
+    public void HiddenLayersAreSkippedAndBlendIsRight()
+    {
+        var dst = new byte[4 * 4 * 4];
+        // 奥：赤（全体を覆う）、手前：緑（全体を覆う・不透明）→ 緑だけ
+        FrameCompositor.Compose(dst, 4, 4, (0, 0, 255), new List<CompositeLayer>
+        {
+            new() { Pixels = Solid(4, 4, 0xFFFF0000), Width = 4, Height = 4, Opaque = true },
+            new() { Pixels = Solid(4, 4, 0xFF00FF00), Width = 4, Height = 4, Opaque = true },
+        }, FitMode.Stretch);
+        Assert.Equal(0xFF00FF00u, BitConverter.ToUInt32(dst, 0));
+        // 白の上に、半透明の黒（a=128、アルファ掛け済みで色 0）→ 灰色 127 前後
+        FrameCompositor.Compose(dst, 4, 4, (255, 255, 255), new List<CompositeLayer>
+        {
+            new() { Pixels = Solid(4, 4, 0x80000000), Width = 4, Height = 4 },
+        }, FitMode.Stretch);
+        Assert.InRange(dst[1], (byte)126, (byte)128);
+        // 濃さ 50% の赤（不透明）を青の上に → 赤 127 前後・青 127 前後
+        FrameCompositor.Compose(dst, 4, 4, (0, 0, 255), new List<CompositeLayer>
+        {
+            new() { Pixels = Solid(4, 4, 0xFFFF0000), Width = 4, Height = 4, Opaque = true, Opacity = 0.5 },
+        }, FitMode.Stretch);
+        Assert.InRange(dst[2], (byte)126, (byte)129);
+        Assert.InRange(dst[0], (byte)126, (byte)129);
     }
 }

@@ -351,7 +351,8 @@ public abstract class CardViewBase : DockPanel
     protected ScrollViewer MainScroll(UIElement content)
     {
         if (mainScroll != null) savedOffset = mainScroll.VerticalOffset;
-        var s = new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Focusable = false };
+        // CanContentScroll = false：段ごとではなく、なめらかに少しずつ動かす（段が高いと、段ごとだと一気に飛ぶ）
+        var s = new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Focusable = false, CanContentScroll = false };
         var offset = savedOffset;
         s.Loaded += (_, _) => s.Dispatcher.BeginInvoke(() => s.ScrollToVerticalOffset(offset), System.Windows.Threading.DispatcherPriority.Loaded);
         mainScroll = s;
@@ -564,7 +565,18 @@ public sealed class LayerCardsView : CardViewBase
             var line = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
             foreach (var c in codes) line.Children.Add(Card(c, width * scale, true));
             cardsArea = line;
-            scroller = new ScrollViewer { Content = line, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Focusable = false };
+            scroller = new ScrollViewer { Content = line, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Focusable = false, CanContentScroll = false };
+            // 段の中でスクロールできないとき（端まで来た・高さを決めていない）は、ホイールを外の一覧に回す
+            var inner = scroller;
+            inner.PreviewMouseWheel += (_, e) =>
+            {
+                var atTop = inner.VerticalOffset <= 0 && e.Delta > 0;
+                var atBottom = inner.VerticalOffset >= inner.ScrollableHeight && e.Delta < 0;
+                if (inner.ScrollableHeight > 0 && !atTop && !atBottom) return;
+                e.Handled = true;
+                var forward = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta) { RoutedEvent = UIElement.MouseWheelEvent, Source = inner };
+                (VisualTreeHelper.GetParent(inner) as UIElement)?.RaiseEvent(forward);
+            };
             dock.Children.Add(scroller);
         }
         // 段の高さ：決めてあれば段全体をその高さに（入りきらないカードは段の中でスクロール）

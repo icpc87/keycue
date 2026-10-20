@@ -319,6 +319,12 @@ public sealed class MainWindow : Window
             return;
         }
         Prefs.Set($"mainWindow.{Model.InstanceNumber}", new Rect(Left, Top, Width, Height).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        // 片付けが終わらなくても、10 秒で必ず終わる
+        new Thread(() =>
+        {
+            Thread.Sleep(10000);
+            Environment.Exit(0);
+        }) { IsBackground = true, Name = "KeyCue.ExitWatchdog" }.Start();
         if (hookHandle != IntPtr.Zero) Native.UnhookWindowsHookEx(hookHandle);
         Model.Shutdown();
         Application.Current.Shutdown();

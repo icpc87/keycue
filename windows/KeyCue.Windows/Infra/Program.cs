@@ -75,6 +75,8 @@ public static class Program
         }
         app.Run();
         instanceMutex?.Dispose();
+        // 画面を閉じたら必ず終わる（片付けのあとに残った処理があっても、窓のないまま CPU を使い続けないように）
+        Environment.Exit(0);
     }
 
     /// <summary>空いている一番小さい番号（#1, #2…）</summary>

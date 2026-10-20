@@ -22,7 +22,7 @@ mkdir -p "$REL"
 echo "==> テスト"
 dotnet test KeyCue.Core.Tests --nologo -v q
 
-typeset -A SHA
+typeset -A SHA SETUPSHA
 for rid in win-x64 win-arm64; do
   arch=${rid#win-}
   echo "==> $rid"
@@ -38,19 +38,22 @@ for rid in win-x64 win-arm64; do
   setup_name="KeyCue-Windows-$VERSION-$arch-setup.exe"
   LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 makensis -V2 -DVERSION="$VERSION" -DARCH=$arch -DSRC="$out" \
     -DICON="$PWD/KeyCue.Windows/Assets/KeyCue.ico" -DOUTFILE="$REL/$setup_name" installer/KeyCue.nsi
+  SETUPSHA[$arch]=$(shasum -a 256 "$REL/$setup_name" | cut -d' ' -f1)
   echo "    $setup_name  $(du -h "$REL/$setup_name" | cut -f1)"
 done
 
 # アプリが見る更新のお知らせ
 perl -CSD -MJSON::PP -Mutf8 -e '
-  my ($notes, $version, $build, $date, $site, $x64, $arm, $sx, $sa) = @ARGV;
+  my ($notes, $version, $build, $date, $site, $x64, $arm, $sx, $sa, $ssx, $ssa) = @ARGV;
   my @lines;
   if (open my $n, "<:encoding(UTF-8)", $notes) { local $/; @lines = grep { /\S/ } split /\n/, <$n>; }
   my $json = JSON::PP->new->utf8(0)->pretty->canonical;
   print $json->encode({ version => $version, build => $build + 0, date => $date,
     zipX64 => "$site/windows/$x64", zipArm64 => "$site/windows/$arm", sha256X64 => $sx, sha256Arm64 => $sa,
+    setupX64 => "$site/windows/KeyCue-Windows-$version-x64-setup.exe", setupArm64 => "$site/windows/KeyCue-Windows-$version-arm64-setup.exe",
+    sha256SetupX64 => $ssx, sha256SetupArm64 => $ssa,
     page => "$site/#windows", notes => \@lines });
-' "$NOTES_FILE" "$VERSION" "$BUILD" "$(date +%Y-%m-%d)" "$SITE" "KeyCue-Windows-$VERSION-x64.zip" "KeyCue-Windows-$VERSION-arm64.zip" "${SHA[x64]}" "${SHA[arm64]}" > "$REL/version-windows.json"
+' "$NOTES_FILE" "$VERSION" "$BUILD" "$(date +%Y-%m-%d)" "$SITE" "KeyCue-Windows-$VERSION-x64.zip" "KeyCue-Windows-$VERSION-arm64.zip" "${SHA[x64]}" "${SHA[arm64]}" "${SETUPSHA[x64]}" "${SETUPSHA[arm64]}" > "$REL/version-windows.json"
 
 mkdir -p dist
 rm -f dist/KeyCue-Windows-*.zip(N)

@@ -8,6 +8,8 @@ SetCompressor /SOLID lzma
 RequestExecutionLevel user
 !include "MUI2.nsh"
 !include "x64.nsh"
+!include "StrFunc.nsh"
+${StrStr}
 
 !define APP "KeyCue"
 !define UNINSTKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\KeyCue"
@@ -39,6 +41,23 @@ VIAddVersionKey "LegalCopyright" "© 2026 Hiroki Ichiyanagi (GPL-3.0)"
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "Japanese"
 
+; 動いている KeyCue があれば、終わらせてから入れる（ファイルを書き換えられないため）
+Function CheckRunning
+  check:
+  nsExec::ExecToStack 'cmd /c tasklist /FI "IMAGENAME eq KeyCue.exe" /NH'
+  Pop $0
+  Pop $1
+  ${StrStr} $2 $1 "KeyCue.exe"
+  StrCmp $2 "" done
+  MessageBox MB_YESNOCANCEL|MB_ICONEXCLAMATION "KeyCue が動いています（画面を閉じても残っていることがあります）。$\r$\n$\r$\n「はい」：KeyCue を終了させて続けます（保存していない変更は失われます）$\r$\n「いいえ」：自分で KeyCue を閉じてから、もう一度確かめます$\r$\n「キャンセル」：入れるのをやめます" IDYES kill IDNO check
+  Abort
+  kill:
+  nsExec::Exec 'taskkill /F /IM KeyCue.exe'
+  Sleep 1500
+  Goto check
+  done:
+FunctionEnd
+
 Function .onInit
 !if "${ARCH}" == "x64"
   ; ARM64 の PC には ARM64 版を案内する（x64 版もエミュレーションで動くので止めはしない）
@@ -52,6 +71,7 @@ Function .onInit
     Abort
   ${EndIf}
 !endif
+  Call CheckRunning
 FunctionEnd
 
 Section "KeyCue"

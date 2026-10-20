@@ -190,8 +190,8 @@ public sealed class TopBar : DockPanel
         var narrow = ActualWidth < 1180;
         if (narrow == compact) return;
         compact = narrow;
-        device.Width = narrow ? 150 : 230;
-        master.Width = narrow ? 70 : 110;
+        device.Width = narrow ? 130 : 230;
+        master.Width = narrow ? 60 : 110;
         pageMenu.MaxWidth = narrow ? 120 : 200;
         outputs.Compact = narrow;
         Sync();
