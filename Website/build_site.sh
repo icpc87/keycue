@@ -41,14 +41,18 @@ WREL="$HOME/Library/Developer/KeyCue/windows/release/$VERSION"
 if [[ -f "$WREL/version-windows.json" ]]; then
   mkdir -p "$OUT/windows"
   rm -f "$OUT"/windows/KeyCue-Windows-*.zip(N)
-  cp "$WREL"/KeyCue-Windows-$VERSION-*.zip "$OUT/windows/"
+  rm -f "$OUT"/windows/KeyCue-Windows-*-setup.exe(N)
+  cp "$WREL"/KeyCue-Windows-$VERSION-*.zip "$WREL"/KeyCue-Windows-$VERSION-*-setup.exe "$OUT/windows/"
   cp "$WREL/version-windows.json" "$OUT/version-windows.json"
   WX64="windows/KeyCue-Windows-$VERSION-x64.zip"
   WARM="windows/KeyCue-Windows-$VERSION-arm64.zip"
-  perl -CSD -Mutf8 -i -pe 'BEGIN { ($v, $d, $x, $xs, $a, $as) = splice(@ARGV, 0, 6) } s/\{\{WIN_VERSION\}\}/$v/g; s/\{\{WIN_DATE\}\}/$d/g; s/\{\{WIN_X64\}\}/$x/g; s/\{\{WIN_X64_SIZE\}\}/$xs/g; s/\{\{WIN_ARM64\}\}/$a/g; s/\{\{WIN_ARM64_SIZE\}\}/$as/g; s/<!--\/?WIN-->//g;' \
-    "$VERSION" "$DATE" "$WX64" "$(perl -e 'printf("%.0f MB", (-s $ARGV[0]) / 1000000)' "$OUT/$WX64")" "$WARM" "$(perl -e 'printf("%.0f MB", (-s $ARGV[0]) / 1000000)' "$OUT/$WARM")" "$OUT/index.html"
+  WX64S="windows/KeyCue-Windows-$VERSION-x64-setup.exe"
+  WARMS="windows/KeyCue-Windows-$VERSION-arm64-setup.exe"
+  mb() { perl -e 'printf("%.0f MB", (-s $ARGV[0]) / 1000000)' "$OUT/$1" }
+  perl -CSD -Mutf8 -i -pe 'BEGIN { ($v, $d, $x, $xs, $a, $as, $xi, $xis, $ai, $ais) = splice(@ARGV, 0, 10) } s/\{\{WIN_VERSION\}\}/$v/g; s/\{\{WIN_DATE\}\}/$d/g; s/\{\{WIN_X64\}\}/$x/g; s/\{\{WIN_X64_SIZE\}\}/$xs/g; s/\{\{WIN_ARM64\}\}/$a/g; s/\{\{WIN_ARM64_SIZE\}\}/$as/g; s/\{\{WIN_X64_SETUP\}\}/$xi/g; s/\{\{WIN_X64_SETUP_SIZE\}\}/$xis/g; s/\{\{WIN_ARM64_SETUP\}\}/$ai/g; s/\{\{WIN_ARM64_SETUP_SIZE\}\}/$ais/g; s/<!--\/?WIN-->//g;' \
+    "$VERSION" "$DATE" "$WX64" "$(mb $WX64)" "$WARM" "$(mb $WARM)" "$WX64S" "$(mb $WX64S)" "$WARMS" "$(mb $WARMS)" "$OUT/index.html"
 else
-  rm -f "$OUT/version-windows.json" "$OUT"/windows/KeyCue-Windows-*.zip(N)
+  rm -f "$OUT/version-windows.json" "$OUT"/windows/KeyCue-Windows-*.zip(N) "$OUT"/windows/KeyCue-Windows-*-setup.exe(N)
   perl -0 -i -pe 's/<!--WIN-->.*?<!--\/WIN-->//gs' "$OUT/index.html"
 fi
 
@@ -65,6 +69,7 @@ perl -CSD -MJSON::PP -Mutf8 -e '
 cat > "$OUT/.htaccess" <<'HT'
 AddType application/x-apple-diskimage .dmg
 AddType application/zip .zip
+AddType application/vnd.microsoft.portable-executable .exe
 AddType application/json .json
 <FilesMatch "^version(-windows)?\.json$">
   Header set Cache-Control "no-cache, no-store, must-revalidate"

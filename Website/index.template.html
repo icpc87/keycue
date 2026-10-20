@@ -111,6 +111,9 @@
   .notes h3 { font-size: 16px; margin: 0 0 8px; }
   .notes ul { color: var(--muted); margin: 0; }
   .req { color: var(--muted); font-size: 14px; max-width: 720px; margin: 24px auto 0; text-align: left; }
+  .pick { display: flex; gap: 18px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .os { color: var(--muted); font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+  .os select { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 15px; font-family: inherit; }
 
   footer { color: var(--muted); font-size: 13px; padding: 36px 0 48px; text-align: center; }
 
@@ -132,7 +135,6 @@
       <a href="#features">機能</a>
       <a href="#howto">使い方</a>
       <a href="#download">ダウンロード</a>
-      <!--WIN--><a href="#windows">Windows 版</a><!--/WIN-->
     </nav>
   </div>
 </header>
@@ -143,8 +145,8 @@
     <h1>KeyCue</h1>
     <p class="tag">キーを押すだけで、音と映像とスライドを。</p>
     <p class="sub">キーボードの各キーに音声・動画・画像・Keynote / PowerPoint のスライドを割り当てて、本番ではキーを押すだけ。ライブ、イベント、礼拝、舞台のためのキュー再生アプリです（Mac・Windows）。</p>
-    <a class="btn" href="{{DMG}}">ダウンロード <small>v{{VERSION}} · {{SIZE}}</small></a>
-    <div class="meta">macOS 14 以降 · Apple Silicon / Intel · 無料</div>
+    <a class="btn dl-btn" href="#download">ダウンロード <small class="dl-sub">v{{VERSION}}</small></a>
+    <div class="meta dl-meta">macOS 14 以降 · Apple Silicon / Intel · 無料</div>
   </div>
   <div class="shot wrap">
     <img src="images/screenshot.png" alt="KeyCue の画面。キーボードに素材が並び、左にプレイリスト、右に映像モニターと再生中の素材">
@@ -208,16 +210,37 @@
 
 <section id="download" class="dl">
   <div class="wrap">
+    <span id="windows"></span>
     <h2>ダウンロード</h2>
-    <p class="lead">KeyCue {{VERSION}}（{{DATE}}）</p>
-    <a class="btn" href="{{DMG}}">KeyCue-{{VERSION}}.dmg をダウンロード <small>{{SIZE}}</small></a>
-    <div class="req">
+    <p class="lead">KeyCue {{VERSION}}（{{DATE}}）— Mac 版と Windows 版は同じ機能で、キーマップ（.keycue）もそのまま開けます</p>
+    <div class="pick">
+      <a class="btn dl-btn" href="{{DMG}}">ダウンロード <small class="dl-sub">Mac 版 · {{SIZE}}</small></a>
+      <label class="os">ほかの OS
+        <select id="dl-os">
+          <option value="mac" data-href="{{DMG}}" data-name="Mac 版" data-size="{{SIZE}}" data-meta="macOS 14 以降 · Apple Silicon / Intel · 無料">Mac（Apple Silicon / Intel）</option>
+          <!--WIN--><option value="win-x64" data-href="{{WIN_X64_SETUP}}" data-name="Windows 版（x64）" data-size="{{WIN_X64_SETUP_SIZE}}" data-meta="Windows 10 / 11（64 ビット）· インストーラー · 無料">Windows（x64・ふつうの PC）</option>
+          <option value="win-arm64" data-href="{{WIN_ARM64_SETUP}}" data-name="Windows 版（ARM64）" data-size="{{WIN_ARM64_SETUP_SIZE}}" data-meta="Windows 11（ARM64）· インストーラー · 無料">Windows（ARM64・Snapdragon など）</option><!--/WIN-->
+        </select>
+      </label>
+    </div>
+    <div class="meta dl-meta">macOS 14 以降 · Apple Silicon / Intel · 無料</div>
+    <div class="req" data-os="mac">
       <b>インストール：</b>ダウンロードした DMG を開き、KeyCue を「アプリケーション」フォルダへドラッグします。<br>
       <b>動作環境：</b>macOS 14 Sonoma 以降（Apple Silicon / Intel）。pptx の変換には PowerPoint または Keynote、key の変換には Keynote が必要です。<br>
       <b>アップデート：</b>新しい版が出ると KeyCue の中でお知らせし、ボタンひとつで入れ替えられます（メニュー「KeyCue › アップデートを確認…」）。<br>
       <b>仮想カメラ：</b>初めて使うとき、「システム設定 › 一般 › ログイン項目と機能拡張 › カメラ機能拡張」で KeyCue をオンにします（KeyCue は「アプリケーション」フォルダに入れて使ってください）。<br>
       Apple の公証を受けた Developer ID で署名しています。
     </div>
+    <!--WIN--><div class="req" data-os="win" hidden>
+      <b>ベータ版です：</b>Windows での動作確認を進めています。うまく動かないときは、<code>%LOCALAPPDATA%\KeyCue\error.log</code> を添えてお知らせください。<br>
+      <b>インストール：</b>ダウンロードしたインストーラーを開き、画面に沿って進めます。管理者の許可は要りません（<code>%LOCALAPPDATA%\Programs\KeyCue</code> に入り、スタートメニューとデスクトップに KeyCue ができます）。削除は「設定 › アプリ」から。<br>
+      初めて開くとき「Windows によって PC が保護されました」と出たら、「詳細情報」→「実行」を押してください（Windows のコード署名はまだしていません）。<br>
+      <b>動作環境：</b>Windows 10（64 ビット）／ 11。ARM64 版は Snapdragon などの ARM の PC 用です。.NET は同梱しています。pptx の変換には PowerPoint（なければ LibreOffice）が必要です。8ch などの多チャンネル出力は ASIO ドライバーで。<br>
+      <b>アップデート：</b>新しい版が出ると KeyCue の中でお知らせし、ダウンロードして入れ替えます（メニュー「ツール › アップデートを確認…」）。<br>
+      <b>仮想カメラ：</b>Windows 11 で使えます。初めて使うときだけ、管理者の確認が出ます。<br>
+      <b>インストールしない版：</b>展開してそのまま使える zip もあります（<a href="{{WIN_X64}}">x64 · {{WIN_X64_SIZE}}</a> ／ <a href="{{WIN_ARM64}}">ARM64 · {{WIN_ARM64_SIZE}}</a>）。<br>
+      動画の読み込みと録画・配信に <a href="https://ffmpeg.org/">FFmpeg</a>（GPL・<a href="https://github.com/BtbN/FFmpeg-Builds">ビルド</a>）を使っています。
+    </div><!--/WIN-->
     <div class="notes">
       <h3>この版の変更点</h3>
       <ul>
@@ -227,25 +250,35 @@
   </div>
 </section>
 
-<!--WIN-->
-<section id="windows" class="dl">
-  <div class="wrap">
-    <h2>Windows 版 <small style="font-size:.5em;font-weight:600;vertical-align:middle;padding:.2em .6em;border-radius:1em;background:#ff9f0a;color:#1d1d1f">ベータ</small></h2>
-    <p class="lead">KeyCue for Windows {{WIN_VERSION}}（{{WIN_DATE}}）— Mac 版と同じ機能で、キーマップ（.keycue）もそのまま開けます</p>
-    <a class="btn" href="{{WIN_X64}}">Windows（x64）版をダウンロード <small>{{WIN_X64_SIZE}}</small></a>
-    <a class="btn" href="{{WIN_ARM64}}">Windows（ARM64）版 <small>{{WIN_ARM64_SIZE}}</small></a>
-    <div class="req">
-      <b>ベータ版です：</b>Windows での動作確認を進めています。うまく動かないときは、<code>%LOCALAPPDATA%\KeyCue\error.log</code> を添えてお知らせください。<br>
-      <b>インストール：</b>zip を展開し、KeyCue フォルダの KeyCue.exe を開きます（Program Files 以外の場所に置くと、アプリ内のアップデートが使えます）。<br>
-      初めて開くとき「Windows によって PC が保護されました」と出たら、「詳細情報」→「実行」を押してください（Windows のコード署名はまだしていません）。<br>
-      <b>動作環境：</b>Windows 10（64 ビット）／ 11。ARM64 版は Snapdragon などの ARM の PC 用です。.NET は同梱しています。pptx の変換には PowerPoint（なければ LibreOffice）が必要です。8ch などの多チャンネル出力は ASIO ドライバーで。<br>
-      <b>アップデート：</b>新しい版が出ると KeyCue の中でお知らせし、ダウンロードして入れ替えます（メニュー「ツール › アップデートを確認…」）。<br>
-      <b>仮想カメラ：</b>Windows 11 で使えます。初めて使うときだけ、管理者の確認が出ます。<br>
-      動画の読み込みと録画・配信に <a href="https://ffmpeg.org/">FFmpeg</a>（GPL・<a href="https://github.com/BtbN/FFmpeg-Builds">ビルド</a>）を使っています。
-    </div>
-  </div>
-</section>
-<!--/WIN-->
+<script>
+// 見ている PC に合うファイルをボタンに出す（ほかの OS は選択欄から）
+(function () {
+  var sel = document.getElementById('dl-os');
+  if (!sel) return;
+  function apply(value) {
+    var o = sel.querySelector('option[value="' + value + '"]') || sel.options[0];
+    sel.value = o.value;
+    document.querySelectorAll('.dl-btn').forEach(function (b) {
+      b.href = o.getAttribute('data-href');
+      b.querySelector('.dl-sub').textContent = o.getAttribute('data-name') + ' · ' + o.getAttribute('data-size');
+    });
+    document.querySelectorAll('.dl-meta').forEach(function (m) { m.textContent = o.getAttribute('data-meta'); });
+    var win = o.value.indexOf('win') === 0;
+    document.querySelectorAll('.req[data-os]').forEach(function (r) { r.hidden = (r.getAttribute('data-os') === 'win') !== win; });
+  }
+  sel.addEventListener('change', function () { apply(sel.value); });
+  var ua = navigator.userAgent, guess = 'mac';
+  if (/Windows/i.test(ua)) guess = /ARM64|aarch64/i.test(ua) ? 'win-arm64' : 'win-x64';
+  if (location.hash === '#windows' && guess === 'mac') guess = 'win-x64';
+  apply(guess);
+  // Chrome・Edge は CPU の種類まで教えてくれる（Windows の ARM64 を見分ける）
+  if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+    navigator.userAgentData.getHighEntropyValues(['architecture', 'platform']).then(function (v) {
+      if (v.platform === 'Windows') apply(v.architecture === 'arm' ? 'win-arm64' : 'win-x64');
+    }).catch(function () {});
+  }
+})();
+</script>
 
 <footer>
   <div class="wrap">© 2026 ic2 · KeyCue · オープンソース（<a href="https://github.com/icpc87/keycue/blob/main/LICENSE">GPL-3.0</a>）· <a href="https://github.com/icpc87/keycue">ソースコード（GitHub）</a> · <a href="https://github.com/icpc87/keycue/releases/tag/ffmpeg-8.1-source">FFmpeg のソース</a></div>

@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Windows 版を作る：テスト → x64 / ARM64 の自己完結パッケージ → zip と SHA-256 → version-windows.json
+# Windows 版を作る：テスト → x64 / ARM64 の自己完結パッケージ → zip（アップデート用）とインストーラー（NSIS・makensis が要る）→ version-windows.json
 #   ./windows/release-windows.sh
 # 出力: ~/Library/Developer/KeyCue/windows/release/<版>/（iCloud 同期の外）。
 #       試す用に windows/dist/ にも zip を置く（iCloud 経由で Windows から取れる）。
@@ -34,6 +34,11 @@ for rid in win-x64 win-arm64; do
   (cd "$REL/build-$arch" && rm -f "../$zip_name" && zip -qr -9 "../$zip_name" KeyCue)
   SHA[$arch]=$(shasum -a 256 "$REL/$zip_name" | cut -d' ' -f1)
   echo "    $zip_name  $(du -h "$REL/$zip_name" | cut -f1)  sha256 ${SHA[$arch]}"
+  # インストーラー（NSIS。管理者の許可なしで %LOCALAPPDATA%\Programs\KeyCue に入れる）
+  setup_name="KeyCue-Windows-$VERSION-$arch-setup.exe"
+  LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 makensis -V2 -DVERSION="$VERSION" -DARCH=$arch -DSRC="$out" \
+    -DICON="$PWD/KeyCue.Windows/Assets/KeyCue.ico" -DOUTFILE="$REL/$setup_name" installer/KeyCue.nsi
+  echo "    $setup_name  $(du -h "$REL/$setup_name" | cut -f1)"
 done
 
 # アプリが見る更新のお知らせ
