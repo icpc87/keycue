@@ -151,12 +151,16 @@ public sealed partial class AppModel
     private List<DeckItem> EnabledDeckItemsFor(ActiveCue cue) => DeckItemsFor(cue).Where(i => i.Enabled).ToList();
 
     /// <summary>新しい素材が流れるとき、「次の素材が流れたら止める」設定のキーを止める</summary>
+    /// <summary>レイヤー表示では、映像は同じレイヤーの映像が流れたときだけ止める（ほかのレイヤーとは重ねる）</summary>
     private void ApplyNextBehavior(ushort code, int group)
     {
+        Assignments.TryGetValue(code, out var starting);
+        var layered = Prefs.MainView == "layers";
         foreach (var cue in cues.Where(c => !c.Stopping && c.Key != code).ToList())
         {
             var a = cue.Assignment;
             if (a.OnNext == NextBehavior.Keep) continue;
+            if (layered && IsVisual(a) && (starting == null || !IsVisual(starting) || starting.Layer != a.Layer)) continue;
             if (a.Group == 0 || a.Group == group) Stop(cue, a.OnNext == NextBehavior.Cut ? 0 : DeckFadeOut(cue) ?? a.FadeOut);
         }
     }

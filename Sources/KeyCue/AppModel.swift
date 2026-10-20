@@ -1185,10 +1185,16 @@ final class AppModel: ObservableObject {
     private func enabledDeckItems(for cue: ActiveCue) -> [DeckItem] { deckItems(for: cue).filter(\.enabled) }
 
     /// 新しい素材が流れるとき、「次の素材が流れたら止める」設定のキーを止める
+    /// レイヤー表示では、映像は同じレイヤーの映像が流れたときだけ止める（ほかのレイヤーとは重ねる）
     private func applyNextBehavior(startingKey code: UInt16, group: Int) {
+        let starting = assignments[code]
+        let layered = UserDefaults.standard.string(forKey: Prefs.mainViewKey) == "layers"
         for cue in cues where !cue.stopping && cue.key != code {
             let a = cue.assignment
             guard a.onNext != .keep else { continue }
+            if layered, isVisual(a) {
+                guard let s = starting, isVisual(s), s.layer == a.layer else { continue }
+            }
             if a.group == 0 || a.group == group {
                 stop(cue, fade: a.onNext == .cut ? 0 : (deckFadeOut(cue) ?? a.fadeOut))
             }
