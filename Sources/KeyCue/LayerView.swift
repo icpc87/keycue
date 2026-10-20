@@ -202,25 +202,65 @@ private struct MonitorsBar: View {
     let monitors: String
     @AppStorage(Prefs.takeStyleKey) private var takeStyle = "smooth"
     @AppStorage(Prefs.takeDurationKey) private var takeDuration = 0.5
+    /// 画面の高さ（幅は 16:9 で決まる）。下のふちで両方、画面の横のつまみでそれぞれを変える
+    @AppStorage("pref.previewMonitorHeight") private var previewHeight = 180.0
+    @AppStorage("pref.programMonitorHeight") private var programHeight = 180.0
+    @State private var dragStart: (preview: Double, program: Double)?
+
+    private static let minHeight = 90.0, maxHeight = 720.0
+    private static func clamp(_ h: Double) -> Double { min(max(h, minHeight), maxHeight) }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            if monitors == "both" || monitors == "preview" {
-                monitor(title: "プレビュー", color: .green) { PreviewComposite(model: model, live: live) }
-                controls
+        let showPreview = monitors == "both" || monitors == "preview"
+        let showProgram = monitors == "both" || monitors == "program"
+        let tallest = max(showPreview ? previewHeight : 0, showProgram ? programHeight : 0)
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 6) {
+                Spacer(minLength: 0)
+                if showPreview {
+                    monitor(title: "プレビュー", color: .green, height: previewHeight) { PreviewComposite(model: model, live: live) }
+                    // 右へ引くと大きく
+                    SideHandle { dx in resize(preview: true, by: dx) } onEnd: { dragStart = nil }
+                    controls.padding(.horizontal, 6)
+                }
+                if showProgram {
+                    // 左へ引くと大きく
+                    SideHandle { dx in resize(preview: false, by: -dx) } onEnd: { dragStart = nil }
+                    monitor(title: "ライブ", color: .red, height: programHeight) { MonitorView(view: model.video.programView) }
+                }
+                Spacer(minLength: 0)
             }
-            if monitors == "both" || monitors == "program" {
-                monitor(title: "ライブ", color: .red) { MonitorView(view: model.video.programView) }
-            }
+            .frame(height: tallest + 22)
+            BarHeightHandle(
+                onChange: { dy in
+                    // 下のふち：両方の画面を同じ割合で大きく・小さく
+                    if dragStart == nil { dragStart = (previewHeight, programHeight) }
+                    guard let s = dragStart else { return }
+                    let base = max(showPreview ? s.preview : 0, showProgram ? s.program : 0)
+                    let f = max(base + dy, MonitorsBar.minHeight) / max(base, 1)
+                    previewHeight = MonitorsBar.clamp(s.preview * f)
+                    programHeight = MonitorsBar.clamp(s.program * f)
+                },
+                onEnd: { dragStart = nil },
+                onReset: { previewHeight = 180; programHeight = 180 })
         }
-        .frame(height: 210)
         .padding(.horizontal, 4)
     }
 
-    private func monitor<Content: View>(title: String, color: Color, @ViewBuilder content: () -> Content) -> some View {
+    /// 画面の横のつまみ：その画面だけ大きさを変える（16:9 のまま）
+    private func resize(preview: Bool, by dx: CGFloat) {
+        if dragStart == nil { dragStart = (previewHeight, programHeight) }
+        guard let s = dragStart else { return }
+        let h = MonitorsBar.clamp((preview ? s.preview : s.program) + Double(dx) * 9 / 16)
+        if preview { previewHeight = h } else { programHeight = h }
+    }
+
+    private func monitor<Content: View>(title: String, color: Color, height: Double, @ViewBuilder content: () -> Content) -> some View {
         VStack(spacing: 4) {
+            // 16:9 のまま、決めた大きさまで。場所が足りなければ縮む
             content()
                 .aspectRatio(16 / 9, contentMode: .fit)
+                .frame(maxWidth: height * 16 / 9, maxHeight: height)
                 .background(Color.black)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
                 .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(color.opacity(0.7), lineWidth: 1.5))
@@ -229,7 +269,6 @@ private struct MonitorsBar: View {
                 Text(title).font(.caption)
             }
         }
-        .frame(maxWidth: .infinity)
     }
 
     private var controls: some View {
@@ -404,5 +443,68 @@ private struct RowResizeHandle: View {
                 .onEnded { _ in start = nil })
             .onTapGesture(count: 2) { sizes.setHeight(layer, nil) }
             .help("ドラッグでこの段の高さを変えます（ダブルクリックで、カードが全部見える高さに戻します）")
+    }
+}
+
+/// モニターの横のつまみ：左右にドラッグして、その画面の大きさを変える
+private struct SideHandle: View {
+    let onChange: (CGFloat) -> Void
+    let onEnd: () -> Void
+    @State private var hover = false
+    @State private var dragging = false
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 2)
+            .fill(Color.white.opacity(hover || dragging ? 0.35 : 0.12))
+            .frame(width: 4, height: 44)
+            .frame(width: 12)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .onHover { inside in
+                hover = inside
+                if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+            }
+            .gesture(DragGesture(minimumDistance: 1)
+                .onChanged { v in
+                    dragging = true
+                    onChange(v.translation.width)
+                }
+                .onEnded { _ in
+                    dragging = false
+                    onEnd()
+                })
+            .help("左右にドラッグして、この画面の大きさを変えます（縦横比はそのまま）")
+    }
+}
+
+/// モニター欄の下のふち：上下にドラッグして、プレビューとライブを一緒に大きく・小さく
+private struct BarHeightHandle: View {
+    let onChange: (Double) -> Void
+    let onEnd: () -> Void
+    let onReset: () -> Void
+    @State private var hover = false
+    @State private var dragging = false
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 2)
+            .fill(Color.white.opacity(hover || dragging ? 0.35 : 0.12))
+            .frame(width: 48, height: 4)
+            .frame(maxWidth: .infinity, minHeight: 10)
+            .contentShape(Rectangle())
+            .onHover { inside in
+                hover = inside
+                if inside { NSCursor.resizeUpDown.push() } else { NSCursor.pop() }
+            }
+            .gesture(DragGesture(minimumDistance: 1)
+                .onChanged { v in
+                    dragging = true
+                    onChange(Double(v.translation.height))
+                }
+                .onEnded { _ in
+                    dragging = false
+                    onEnd()
+                })
+            .onTapGesture(count: 2) { onReset() }
+            .help("上下にドラッグして、プレビューとライブの画面を一緒に大きく・小さくします（ダブルクリックで元の大きさ）")
     }
 }

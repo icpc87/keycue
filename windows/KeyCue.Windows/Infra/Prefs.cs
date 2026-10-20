@@ -34,6 +34,8 @@ public static class Prefs
         ["layerMonitors"] = "both",           // both / program / preview / none
         ["takeStyle"] = "smooth",             // cut / smooth
         ["takeDuration"] = 0.5,
+        ["previewMonitorHeight"] = 180.0,  // レイヤー表示のプレビュー・ライブの画面の高さ（幅は 16:9）
+        ["programMonitorHeight"] = 180.0,
         ["programWidth"] = 1920.0,            // 録画・配信・仮想カメラの大きさ
         ["programHeight"] = 1080.0,
         ["programFps"] = 30.0,
