@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- FFmpeg で音声・動画を読む部分。Windows 版が使い、Mac でも（Homebrew の FFmpeg で）テストできる -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>KeyCue.Media</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="FFmpeg.AutoGen" Version="8.1.0" />
+    <ProjectReference Include="../KeyCue.Core/KeyCue.Core.csproj" />
+  </ItemGroup>
+</Project>

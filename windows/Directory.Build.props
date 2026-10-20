@@ -1,0 +1,8 @@
+<Project>
+  <!-- Mac でビルドするときは、ビルドの中間ファイルを iCloud 同期の外（~/Library/Developer/KeyCue/windows/build）に置く -->
+  <PropertyGroup Condition="'$(OS)' != 'Windows_NT' and '$(HOME)' != ''">
+    <KeyCueBuildRoot>$(HOME)/Library/Developer/KeyCue/windows/build/</KeyCueBuildRoot>
+    <BaseOutputPath>$(KeyCueBuildRoot)bin/$(MSBuildProjectName)/</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(KeyCueBuildRoot)obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>

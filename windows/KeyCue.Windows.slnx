@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="KeyCue.Core.Tests/KeyCue.Core.Tests.csproj" />
+  <Project Path="KeyCue.Core/KeyCue.Core.csproj" />
+  <Project Path="KeyCue.Media/KeyCue.Media.csproj" />
+  <Project Path="KeyCue.Windows/KeyCue.Windows.csproj" />
+</Solution>

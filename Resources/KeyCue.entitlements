@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- pptx / key を PDF にするため Keynote・PowerPoint を AppleScript で操作する -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+	<!-- ライブ入力：Web カメラ・キャプチャ機器の映像と、マイク・オーディオインターフェースの音 -->
+	<key>com.apple.security.device.camera</key>
+	<true/>
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
+</dict>
+</plist>

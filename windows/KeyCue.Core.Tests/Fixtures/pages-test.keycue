@@ -1,0 +1,618 @@
+{
+  "currentPage" : 0,
+  "format" : "keycue",
+  "keys" : {
+    "12" : {
+      "clickToTake" : false,
+      "colorIndex" : 0,
+      "fadeIn" : 0,
+      "fadeOut" : 1,
+      "group" : 0,
+      "layer" : 5,
+      "loop" : false,
+      "mode" : "toggle",
+      "onNext" : "keep",
+      "outputMap" : "",
+      "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/eight_ch.wav",
+      "relativePath" : "eight_ch.wav",
+      "showVideo" : true,
+      "slideAuto" : false,
+      "slideInterval" : 5,
+      "slideLoop" : false,
+      "slideTransition" : 0.3,
+      "slideTransitionStyle" : "dissolve",
+      "title" : "",
+      "volume" : 1
+    },
+    "13" : {
+      "clickToTake" : false,
+      "colorIndex" : 1,
+      "fadeIn" : 0,
+      "fadeOut" : 0.5,
+      "group" : 0,
+      "layer" : 5,
+      "loop" : false,
+      "mode" : "toggle",
+      "onNext" : "keep",
+      "outputMap" : "",
+      "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/stereo_44k.wav",
+      "relativePath" : "stereo_44k.wav",
+      "showVideo" : true,
+      "slideAuto" : false,
+      "slideInterval" : 5,
+      "slideLoop" : false,
+      "slideTransition" : 0.3,
+      "slideTransitionStyle" : "dissolve",
+      "title" : "",
+      "volume" : 1
+    },
+    "14" : {
+      "clickToTake" : false,
+      "colorIndex" : 2,
+      "fadeIn" : 0,
+      "fadeOut" : 1,
+      "group" : 1,
+      "layer" : 5,
+      "loop" : false,
+      "mode" : "toggle",
+      "onNext" : "fade",
+      "outputMap" : "",
+      "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/mono.wav",
+      "relativePath" : "mono.wav",
+      "showVideo" : true,
+      "slideAuto" : false,
+      "slideInterval" : 5,
+      "slideLoop" : false,
+      "slideTransition" : 0.3,
+      "slideTransitionStyle" : "dissolve",
+      "title" : "",
+      "volume" : 1
+    },
+    "15" : {
+      "clickToTake" : false,
+      "colorIndex" : 3,
+      "fadeIn" : 0,
+      "fadeOut" : 1,
+      "group" : 0,
+      "layer" : 2,
+      "loop" : false,
+      "mode" : "toggle",
+      "onNext" : "keep",
+      "outputMap" : "",
+      "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/clip.mp4",
+      "relativePath" : "clip.mp4",
+      "showVideo" : true,
+      "slideAuto" : false,
+      "slideInterval" : 5,
+      "slideLoop" : false,
+      "slideTransition" : 0.3,
+      "slideTransitionStyle" : "dissolve",
+      "title" : "",
+      "volume" : 1
+    },
+    "16" : {
+      "clickToTake" : false,
+      "colorIndex" : 5,
+      "fadeIn" : 0,
+      "fadeOut" : 1,
+      "group" : 0,
+      "layer" : 5,
+      "loop" : false,
+      "matrix" : [
+        [
+          0
+        ],
+        [
+          1
+        ],
+        [
+          2
+        ],
+        [
+          3
+        ]
+      ],
+      "mode" : "toggle",
+      "onNext" : "keep",
+      "outputMap" : "",
+      "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/four_tracks.mov",
+      "relativePath" : "four_tracks.mov",
+      "showVideo" : true,
+      "slideAuto" : false,
+      "slideInterval" : 5,
+      "slideLoop" : false,
+      "slideTransition" : 0.3,
+      "slideTransitionStyle" : "dissolve",
+      "title" : "",
+      "volume" : 1
+    },
+    "17" : {
+      "clickToTake" : false,
+      "colorIndex" : 4,
+      "deckItems" : [
+        {
+          "enabled" : true,
+          "endAction" : "next",
+          "file" : "s004.png",
+          "id" : "s4",
+          "kind" : "image",
+          "slide" : 4,
+          "title" : "スライド 4",
+          "volume" : 1
+        },
+        {
+          "advanceAfter" : 0,
+          "enabled" : true,
+          "endAction" : "next",
+          "file" : "s001.png",
+          "id" : "s1",
+          "kind" : "image",
+          "slide" : 1,
+          "title" : "スライド 1",
+          "volume" : 1
+        },
+        {
+          "enabled" : true,
+          "endAction" : "next",
+          "fadeOut" : 0.2,
+          "file" : "s002.png",
+          "id" : "s2",
+          "kind" : "image",
+          "slide" : 2,
+          "title" : "スライド 2",
+          "transition" : 0.6,
+          "transitionStyle" : "black",
+          "volume" : 1
+        },
+        {
+          "enabled" : true,
+          "endAction" : "next",
+          "file" : "s002-m1.mp4",
+          "id" : "s2-m1",
+          "kind" : "video",
+          "slide" : 2,
+          "title" : "スライド 2 の動画（media1）",
+          "volume" : 1
+        },
+        {
+          "enabled" : false,
+          "endAction" : "next",
+          "file" : "s003.png",
+          "id" : "s3",
+          "kind" : "image",
+          "slide" : 3,
+          "title" : "スライド 3",
+          "volume" : 1
+        }
+      ],
+      "fadeIn" : 0,
+      "fadeOut" : 1,
+      "group" : 0,
+      "layer" : 7,
+      "loop" : false,
+      "mode" : "toggle",
+      "onNext" : "keep",
+      "outputMap" : "",
+      "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/deck.pptx",
+      "relativePath" : "deck.pptx",
+      "showVideo" : true,
+      "slideAuto" : false,
+      "slideInterval" : 5,
+      "slideLoop" : false,
+      "slideTransition" : 0.2,
+      "slideTransitionStyle" : "dissolve",
+      "title" : "",
+      "volume" : 1
+    },
+    "32" : {
+      "clickToTake" : false,
+      "colorIndex" : 6,
+      "deckItems" : [
+        {
+          "enabled" : true,
+          "endAction" : "hold",
+          "file" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/clip.mp4",
+          "id" : "f1:\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/clip.mp4",
+          "kind" : "video",
+          "slide" : 3,
+          "title" : "clip",
+          "volume" : 0.5
+        },
+        {
+          "enabled" : true,
+          "endAction" : "next",
+          "file" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/still.png",
+          "id" : "f1:\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/still.png",
+          "kind" : "image",
+          "slide" : 2,
+          "title" : "still",
+          "volume" : 1
+        }
+      ],
+      "fadeIn" : 0,
+      "fadeOut" : 1,
+      "group" : 0,
+      "layer" : 5,
+      "loop" : false,
+      "mode" : "toggle",
+      "onNext" : "keep",
+      "outputMap" : "",
+      "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/still.png",
+      "relativePath" : "still.png",
+      "relativeSources" : [
+        "still.png",
+        "clip.mp4"
+      ],
+      "showVideo" : true,
+      "slideAuto" : false,
+      "slideInterval" : 5,
+      "slideLoop" : false,
+      "slideTransition" : 0.3,
+      "slideTransitionStyle" : "dissolve",
+      "sources" : [
+        "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/still.png",
+        "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/clip.mp4"
+      ],
+      "title" : "",
+      "volume" : 1
+    },
+    "34" : {
+      "clickToTake" : false,
+      "colorIndex" : 7,
+      "fadeIn" : 0,
+      "fadeOut" : 1,
+      "group" : 0,
+      "layer" : 5,
+      "loop" : false,
+      "mode" : "toggle",
+      "onNext" : "keep",
+      "outputMap" : "",
+      "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/stereo_44k.wav",
+      "relativePath" : "stereo_44k.wav",
+      "relativeSources" : [
+        "stereo_44k.wav",
+        "still.png"
+      ],
+      "showVideo" : true,
+      "slideAuto" : false,
+      "slideInterval" : 5,
+      "slideLoop" : false,
+      "slideTransition" : 0.3,
+      "slideTransitionStyle" : "dissolve",
+      "sources" : [
+        "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/stereo_44k.wav",
+        "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/still.png"
+      ],
+      "title" : "",
+      "volume" : 1
+    }
+  },
+  "masterVolume" : 0.08,
+  "mutedOutputs" : [
+
+  ],
+  "pages" : [
+    {
+      "keys" : {
+        "12" : {
+          "clickToTake" : false,
+          "colorIndex" : 0,
+          "fadeIn" : 0,
+          "fadeOut" : 1,
+          "group" : 0,
+          "layer" : 5,
+          "loop" : false,
+          "mode" : "toggle",
+          "onNext" : "keep",
+          "outputMap" : "",
+          "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/eight_ch.wav",
+          "relativePath" : "eight_ch.wav",
+          "showVideo" : true,
+          "slideAuto" : false,
+          "slideInterval" : 5,
+          "slideLoop" : false,
+          "slideTransition" : 0.3,
+          "slideTransitionStyle" : "dissolve",
+          "title" : "",
+          "volume" : 1
+        },
+        "13" : {
+          "clickToTake" : false,
+          "colorIndex" : 1,
+          "fadeIn" : 0,
+          "fadeOut" : 0.5,
+          "group" : 0,
+          "layer" : 5,
+          "loop" : false,
+          "mode" : "toggle",
+          "onNext" : "keep",
+          "outputMap" : "",
+          "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/stereo_44k.wav",
+          "relativePath" : "stereo_44k.wav",
+          "showVideo" : true,
+          "slideAuto" : false,
+          "slideInterval" : 5,
+          "slideLoop" : false,
+          "slideTransition" : 0.3,
+          "slideTransitionStyle" : "dissolve",
+          "title" : "",
+          "volume" : 1
+        },
+        "14" : {
+          "clickToTake" : false,
+          "colorIndex" : 2,
+          "fadeIn" : 0,
+          "fadeOut" : 1,
+          "group" : 1,
+          "layer" : 5,
+          "loop" : false,
+          "mode" : "toggle",
+          "onNext" : "fade",
+          "outputMap" : "",
+          "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/mono.wav",
+          "relativePath" : "mono.wav",
+          "showVideo" : true,
+          "slideAuto" : false,
+          "slideInterval" : 5,
+          "slideLoop" : false,
+          "slideTransition" : 0.3,
+          "slideTransitionStyle" : "dissolve",
+          "title" : "",
+          "volume" : 1
+        },
+        "15" : {
+          "clickToTake" : false,
+          "colorIndex" : 3,
+          "fadeIn" : 0,
+          "fadeOut" : 1,
+          "group" : 0,
+          "layer" : 2,
+          "loop" : false,
+          "mode" : "toggle",
+          "onNext" : "keep",
+          "outputMap" : "",
+          "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/clip.mp4",
+          "relativePath" : "clip.mp4",
+          "showVideo" : true,
+          "slideAuto" : false,
+          "slideInterval" : 5,
+          "slideLoop" : false,
+          "slideTransition" : 0.3,
+          "slideTransitionStyle" : "dissolve",
+          "title" : "",
+          "volume" : 1
+        },
+        "16" : {
+          "clickToTake" : false,
+          "colorIndex" : 5,
+          "fadeIn" : 0,
+          "fadeOut" : 1,
+          "group" : 0,
+          "layer" : 5,
+          "loop" : false,
+          "matrix" : [
+            [
+              0
+            ],
+            [
+              1
+            ],
+            [
+              2
+            ],
+            [
+              3
+            ]
+          ],
+          "mode" : "toggle",
+          "onNext" : "keep",
+          "outputMap" : "",
+          "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/four_tracks.mov",
+          "relativePath" : "four_tracks.mov",
+          "showVideo" : true,
+          "slideAuto" : false,
+          "slideInterval" : 5,
+          "slideLoop" : false,
+          "slideTransition" : 0.3,
+          "slideTransitionStyle" : "dissolve",
+          "title" : "",
+          "volume" : 1
+        },
+        "17" : {
+          "clickToTake" : false,
+          "colorIndex" : 4,
+          "deckItems" : [
+            {
+              "enabled" : true,
+              "endAction" : "next",
+              "file" : "s004.png",
+              "id" : "s4",
+              "kind" : "image",
+              "slide" : 4,
+              "title" : "スライド 4",
+              "volume" : 1
+            },
+            {
+              "advanceAfter" : 0,
+              "enabled" : true,
+              "endAction" : "next",
+              "file" : "s001.png",
+              "id" : "s1",
+              "kind" : "image",
+              "slide" : 1,
+              "title" : "スライド 1",
+              "volume" : 1
+            },
+            {
+              "enabled" : true,
+              "endAction" : "next",
+              "fadeOut" : 0.2,
+              "file" : "s002.png",
+              "id" : "s2",
+              "kind" : "image",
+              "slide" : 2,
+              "title" : "スライド 2",
+              "transition" : 0.6,
+              "transitionStyle" : "black",
+              "volume" : 1
+            },
+            {
+              "enabled" : true,
+              "endAction" : "next",
+              "file" : "s002-m1.mp4",
+              "id" : "s2-m1",
+              "kind" : "video",
+              "slide" : 2,
+              "title" : "スライド 2 の動画（media1）",
+              "volume" : 1
+            },
+            {
+              "enabled" : false,
+              "endAction" : "next",
+              "file" : "s003.png",
+              "id" : "s3",
+              "kind" : "image",
+              "slide" : 3,
+              "title" : "スライド 3",
+              "volume" : 1
+            }
+          ],
+          "fadeIn" : 0,
+          "fadeOut" : 1,
+          "group" : 0,
+          "layer" : 7,
+          "loop" : false,
+          "mode" : "toggle",
+          "onNext" : "keep",
+          "outputMap" : "",
+          "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/deck.pptx",
+          "relativePath" : "deck.pptx",
+          "showVideo" : true,
+          "slideAuto" : false,
+          "slideInterval" : 5,
+          "slideLoop" : false,
+          "slideTransition" : 0.2,
+          "slideTransitionStyle" : "dissolve",
+          "title" : "",
+          "volume" : 1
+        },
+        "32" : {
+          "clickToTake" : false,
+          "colorIndex" : 6,
+          "deckItems" : [
+            {
+              "enabled" : true,
+              "endAction" : "hold",
+              "file" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/clip.mp4",
+              "id" : "f1:\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/clip.mp4",
+              "kind" : "video",
+              "slide" : 3,
+              "title" : "clip",
+              "volume" : 0.5
+            },
+            {
+              "enabled" : true,
+              "endAction" : "next",
+              "file" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/still.png",
+              "id" : "f1:\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/still.png",
+              "kind" : "image",
+              "slide" : 2,
+              "title" : "still",
+              "volume" : 1
+            }
+          ],
+          "fadeIn" : 0,
+          "fadeOut" : 1,
+          "group" : 0,
+          "layer" : 5,
+          "loop" : false,
+          "mode" : "toggle",
+          "onNext" : "keep",
+          "outputMap" : "",
+          "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/still.png",
+          "relativePath" : "still.png",
+          "relativeSources" : [
+            "still.png",
+            "clip.mp4"
+          ],
+          "showVideo" : true,
+          "slideAuto" : false,
+          "slideInterval" : 5,
+          "slideLoop" : false,
+          "slideTransition" : 0.3,
+          "slideTransitionStyle" : "dissolve",
+          "sources" : [
+            "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/still.png",
+            "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/clip.mp4"
+          ],
+          "title" : "",
+          "volume" : 1
+        },
+        "34" : {
+          "clickToTake" : false,
+          "colorIndex" : 7,
+          "fadeIn" : 0,
+          "fadeOut" : 1,
+          "group" : 0,
+          "layer" : 5,
+          "loop" : false,
+          "mode" : "toggle",
+          "onNext" : "keep",
+          "outputMap" : "",
+          "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/stereo_44k.wav",
+          "relativePath" : "stereo_44k.wav",
+          "relativeSources" : [
+            "stereo_44k.wav",
+            "still.png"
+          ],
+          "showVideo" : true,
+          "slideAuto" : false,
+          "slideInterval" : 5,
+          "slideLoop" : false,
+          "slideTransition" : 0.3,
+          "slideTransitionStyle" : "dissolve",
+          "sources" : [
+            "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/stereo_44k.wav",
+            "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/still.png"
+          ],
+          "title" : "",
+          "volume" : 1
+        }
+      },
+      "name" : "ページ 1"
+    },
+    {
+      "keys" : {
+        "12" : {
+          "clickToTake" : false,
+          "colorIndex" : 0,
+          "fadeIn" : 0,
+          "fadeOut" : 1,
+          "group" : 0,
+          "layer" : 5,
+          "loop" : false,
+          "mode" : "toggle",
+          "onNext" : "keep",
+          "outputMap" : "",
+          "path" : "\/private\/tmp\/claude-501\/-Users-icpc87-Documents-soundplant-app\/b5bd6358-601c-453c-9548-3b3bfa5ca975\/scratchpad\/media\/clip.mp4",
+          "relativePath" : "clip.mp4",
+          "showVideo" : true,
+          "slideAuto" : false,
+          "slideInterval" : 5,
+          "slideLoop" : false,
+          "slideTransition" : 0.3,
+          "slideTransitionStyle" : "dissolve",
+          "title" : "",
+          "volume" : 1
+        }
+      },
+      "name" : "ページ 2"
+    }
+  ],
+  "stopAllFade" : 1,
+  "version" : 1,
+  "videoOutputs" : [
+    "window"
+  ],
+  "videoTarget" : "window"
+}

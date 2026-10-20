@@ -1,0 +1,8 @@
+# ビルドの成果物（アプリ本体はサイトで配布する）
+/build/
+/.build/
+/windows/dist/
+bin/
+obj/
+*.user
+.DS_Store

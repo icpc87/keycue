@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>ja</string>
+	<key>CFBundleDisplayName</key>
+	<string>KeyCue</string>
+	<key>CFBundleExecutable</key>
+	<string>KeyCue</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>jp.ic2.keycue</string>
+	<key>CFBundleName</key>
+	<string>KeyCue</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSMultipleInstancesProhibited</key>
+	<false/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>pptx / Keynote のスライドを表示用の PDF に変換するため、Keynote または PowerPoint を操作します。</string>
+	<key>NSCameraUsageDescription</key>
+	<string>キーに割り当てた Web カメラやキャプチャ機器の映像を、ライブ入力として出力するために使います。</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>キーに割り当てたマイクやオーディオインターフェース・キャプチャ機器の音を、ライブ入力として出力するために使います。</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 Hiroki Ichiyanagi</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.json</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>KeyCue キーマップ</string>
+			<key>UTTypeIdentifier</key>
+			<string>jp.ic2.keycue.keymap</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>keycue</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+</dict>
+</plist>
