@@ -283,7 +283,7 @@ public sealed class OutputsTab : StackPanel
         var codecs = s.Kind == OutputKind.Record
             ? new[] { ("h264", "H.264"), ("hevc", "HEVC（H.265）"), ("prores", "ProRes 422 HQ（.mov）") }
             : new[] { ("h264", "H.264"), ("hevc", "HEVC（H.265）") };
-        var encoders = new[] { ("auto", "自動（x264 / x265）"), ("x264", "x264（CPU）"), ("x265", "x265（CPU）"), ("nvenc", "NVIDIA NVENC"), ("qsv", "Intel Quick Sync"), ("amf", "AMD AMF"), ("mf", "Windows（Media Foundation）") };
+        var encoders = new[] { ("auto", "自動（専用回路 → x264 / x265）"), ("x264", "x264（CPU）"), ("x265", "x265（CPU）"), ("nvenc", "NVIDIA NVENC"), ("qsv", "Intel Quick Sync"), ("amf", "AMD AMF"), ("mf", "Windows（Media Foundation）") };
         var bitrate = new NumberBox(s.VideoBitrateKbps, 70) { Minimum = 100 };
         bitrate.ValueChanged += v => Change(x => x.VideoBitrateKbps = (int)v);
         p.Children.Add(Theme.Row(Theme.Label("映像  "),
