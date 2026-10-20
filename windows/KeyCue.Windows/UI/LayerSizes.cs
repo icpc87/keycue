@@ -32,7 +32,7 @@ public static class LayerSizes
     public static void SetHeight(int layer, double? h)
     {
         var d = Load("layerHeights");
-        if (h is { } v) d[layer] = Math.Max(50, v); else d.Remove(layer);
+        if (h is { } v) d[layer] = Math.Max(40, v); else d.Remove(layer);
         Save("layerHeights", d);
     }
 

@@ -118,19 +118,22 @@ private struct LayerRow: View {
                     }
                     .padding(.vertical, 3)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(GeometryReader { g in
-                        Color.clear
-                            .onAppear { contentHeight = g.size.height }
-                            .onChange(of: g.size.height) { _, h in contentHeight = h }
-                    })
-                    if let h = sizes.heights[layer] {
-                        ScrollView(.vertical) { grid }.frame(height: CGFloat(h))
+                    if sizes.heights[layer] != nil {
+                        ScrollView(.vertical) { grid }
                     } else {
                         grid
                     }
                 }
             }
-            RowResizeHandle(sizes: sizes, layer: layer, contentHeight: max(contentHeight, 60))
+            // 段の高さ（決めてあれば段全体をその高さに。入りきらないカードは段の中でスクロール）
+            .background(GeometryReader { g in
+                Color.clear
+                    .onAppear { contentHeight = g.size.height }
+                    .onChange(of: g.size.height) { _, h in contentHeight = h }
+            })
+            .frame(height: sizes.heights[layer].map { CGFloat($0) }, alignment: .top)
+            .clipped()
+            RowResizeHandle(sizes: sizes, layer: layer, contentHeight: max(contentHeight, 40))
         }
         .padding(.horizontal, 6)
         .padding(.top, 6)
@@ -400,8 +403,12 @@ final class LayerSizes: ObservableObject {
 
     private init() {
         func load(_ key: String) -> [Int: Double] {
-            let d = UserDefaults.standard.dictionary(forKey: key) as? [String: Double] ?? [:]
-            return Dictionary(uniqueKeysWithValues: d.compactMap { k, v in Int(k).map { ($0, v) } })
+            // 数値でも文字でも読む（起動引数で渡すと文字になる）
+            let d = UserDefaults.standard.dictionary(forKey: key) ?? [:]
+            return Dictionary(uniqueKeysWithValues: d.compactMap { k, v -> (Int, Double)? in
+                guard let layer = Int(k), let value = (v as? NSNumber)?.doubleValue ?? (v as? String).flatMap(Double.init) else { return nil }
+                return (layer, value)
+            })
         }
         heights = load(LayerSizes.heightsKey)
         scales = load(LayerSizes.scalesKey)
@@ -410,7 +417,7 @@ final class LayerSizes: ObservableObject {
     func scale(_ layer: Int) -> Double { scales[layer] ?? 1 }
 
     func setHeight(_ layer: Int, _ h: Double?) {
-        heights[layer] = h.map { max(50, $0) }
+        heights[layer] = h.map { max(40, $0) }
         save(heights, LayerSizes.heightsKey)
     }
 

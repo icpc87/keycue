@@ -539,35 +539,23 @@ public sealed class LayerCardsView : CardViewBase
             foreach (var c in codes) line.Children.Add(Card(c, width * scale, true));
             cardsArea = line;
             scroller = new ScrollViewer { Content = line, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Focusable = false };
-            if (LayerSizes.Height(layer) is { } h) scroller.Height = h;
             dock.Children.Add(scroller);
         }
+        // 段の高さ：決めてあれば段全体をその高さに（入りきらないカードは段の中でスクロール）
+        dock.ClipToBounds = true;
+        dock.VerticalAlignment = VerticalAlignment.Top;
+        if (LayerSizes.Height(layer) is { } h) dock.Height = h;
         // 段の下のふち：ドラッグで段の高さを変える（ダブルクリックで、カードが全部見える高さに戻す）
-        var grip = new System.Windows.Controls.Primitives.Thumb { Height = 9, Cursor = Cursors.SizeNS, ToolTip = "ドラッグでこの段の高さを変えます（ダブルクリックで、カードが全部見える高さに戻します）" };
-        var gripVisual = new FrameworkElementFactory(typeof(Border));
-        gripVisual.SetValue(Border.BackgroundProperty, Brushes.Transparent);
-        var bar = new FrameworkElementFactory(typeof(Border));
-        bar.SetValue(FrameworkElement.WidthProperty, 48.0);
-        bar.SetValue(FrameworkElement.HeightProperty, 4.0);
-        bar.SetValue(Border.CornerRadiusProperty, new CornerRadius(2));
-        bar.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)));
-        gripVisual.AppendChild(bar);
-        grip.Template = new ControlTemplate(typeof(System.Windows.Controls.Primitives.Thumb)) { VisualTree = gripVisual };
-        grip.DragDelta += (_, e) =>
-        {
-            if (scroller == null) return;
-            var start = double.IsNaN(scroller.Height) ? scroller.ActualHeight : scroller.Height;
-            scroller.Height = Math.Max(50, start + e.VerticalChange);
-        };
-        grip.DragCompleted += (_, _) =>
-        {
-            if (scroller != null && !double.IsNaN(scroller.Height)) LayerSizes.SetHeight(layer, scroller.Height);
-        };
-        grip.MouseDoubleClick += (_, _) =>
-        {
-            LayerSizes.SetHeight(layer, null);
-            if (scroller != null) scroller.Height = double.NaN;
-        };
+        double heightStart = 0;
+        var grip = DragGrip.Make(true, "ドラッグでこの段の高さを変えます（ダブルクリックで、カードが全部見える高さに戻します）",
+            () => heightStart = double.IsNaN(dock.Height) ? dock.ActualHeight : dock.Height,
+            d => dock.Height = Math.Max(40, heightStart + d),
+            () => LayerSizes.SetHeight(layer, dock.Height),
+            () =>
+            {
+                LayerSizes.SetHeight(layer, null);
+                dock.Height = double.NaN;
+            });
         var body = new DockPanel();
         DockPanel.SetDock(grip, Dock.Bottom);
         body.Children.Add(grip);

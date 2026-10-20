@@ -19,13 +19,13 @@ public sealed class MonitorsBar : Grid
     private readonly StackPanel durationRow;
     private readonly Viewbox previewBox, programBox;
     private readonly FrameworkElement previewGrip, programGrip;
-    private const double MinHeight = 90, MaxHeight = 720;
+    private const double MinScreenHeight = 90, MaxScreenHeight = 720;
     /// <summary>ドラッグを始めたときの画面の高さ</summary>
     private (double Preview, double Program) dragStart;
 
     private static double PreviewHeight => Prefs.Get<double>("previewMonitorHeight") is > 0 and var h ? h : 180;
     private static double ProgramHeight => Prefs.Get<double>("programMonitorHeight") is > 0 and var h ? h : 180;
-    private static double Clamp(double h) => Math.Clamp(h, MinHeight, MaxHeight);
+    private static double Clamp(double h) => Math.Clamp(h, MinScreenHeight, MaxScreenHeight);
 
     public MonitorsBar(AppModel model)
     {
@@ -60,7 +60,7 @@ public sealed class MonitorsBar : Grid
             {
                 var mode = Prefs.LayerMonitors;
                 var b = Math.Max(mode is "both" or "preview" ? dragStart.Preview : 0, mode is "both" or "program" ? dragStart.Program : 0);
-                var f = Math.Max(b + d, MinHeight) / Math.Max(b, 1);
+                var f = Math.Max(b + d, MinScreenHeight) / Math.Max(b, 1);
                 Prefs.Set("previewMonitorHeight", Clamp(dragStart.Preview * f));
                 Prefs.Set("programMonitorHeight", Clamp(dragStart.Program * f));
             },
