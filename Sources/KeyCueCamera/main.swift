@@ -32,6 +32,8 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
     private var sinkRunning = false
     private var lastSinkFrame: UInt64 = 0
     private var sinkClient: CMIOExtensionClient?
+    private var ticks = 0
+    private var forwarded = 0
 
     init(localizedName: String) {
         var fd: CMFormatDescription?
@@ -68,6 +70,7 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
     // MARK: 出力（ほかのアプリが見る側）
 
     func startSource() {
+        log.notice("startSource")
         queue.sync {
             sourceRunning += 1
             guard timer == nil else { return }
@@ -80,6 +83,7 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
     }
 
     func stopSource() {
+        log.notice("stopSource")
         queue.sync {
             sourceRunning = max(0, sourceRunning - 1)
             if sourceRunning == 0 {
@@ -92,7 +96,11 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
     /// KeyCue からしばらく来ていなければ黒を出す
     private func placeholderTick() {
         let now = mach_absolute_time()
-        if sinkRunning && Self.seconds(now - lastSinkFrame) < 0.5 { return }
+        ticks += 1
+        if ticks % 60 == 1 {
+            log.debug("tick sinkRunning=\(self.sinkRunning, privacy: .public) age=\(Self.seconds(now &- self.lastSinkFrame), privacy: .public) forwarded=\(self.forwarded, privacy: .public) sources=\(self.sourceRunning, privacy: .public)")
+        }
+        if sinkRunning && Self.seconds(now &- lastSinkFrame) < 0.5 { return }
         guard let pool else { return }
         var pb: CVPixelBuffer?
         CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &pb)
@@ -123,6 +131,7 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
     // MARK: 入力（KeyCue 本体が入れる側）
 
     func startSink(client: CMIOExtensionClient) {
+        log.notice("startSink")
         queue.sync {
             sinkClient = client
             sinkRunning = true
@@ -131,6 +140,7 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
     }
 
     func stopSink() {
+        log.notice("stopSink")
         queue.sync {
             sinkRunning = false
             sinkClient = nil
@@ -144,6 +154,7 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
             if let sb {
                 self.queue.async {
                     self.lastSinkFrame = mach_absolute_time()
+                    self.forwarded += 1
                     if self.sourceRunning > 0 {
                         self.sourceStream.stream.send(sb, discontinuity: [], hostTimeInNanoseconds: UInt64(Self.seconds(self.lastSinkFrame) * Double(NSEC_PER_SEC)))
                     }
@@ -153,7 +164,7 @@ final class DeviceSource: NSObject, CMIOExtensionDeviceSource {
             }
             if error != nil && sb == nil {
                 // まだ何も入っていない：少し待って読み直す
-                self.queue.asyncAfter(deadline: .now() + 0.005) { self.consume() }
+                DispatchQueue.global(qos: .userInteractive).asyncAfter(deadline: .now() + 0.005) { self.consume() }
             } else {
                 self.consume()
             }

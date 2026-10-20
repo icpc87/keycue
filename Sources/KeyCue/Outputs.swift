@@ -280,14 +280,33 @@ final class FFmpegOutput {
             let fd = open(audioPipe, O_RDONLY | O_NONBLOCK)
             if fd >= 0 { close(fd) }
         }
-        videoQueue.sync {}
-        audioQueue.sync {}
-        try? stdin.fileHandleForWriting.close()
-        lock.lock(); let h = audioHandle; lock.unlock()
-        try? h?.close()
-        let deadline = Date().addingTimeInterval(wait)
-        while process.isRunning && Date() < deadline { Thread.sleep(forTimeInterval: 0.05) }
-        if process.isRunning { process.terminate() }
+        // 映像と音は、それぞれ送り終えたら別々に閉じる。片方の残りを待ってからもう片方を閉じると、
+        // ffmpeg は映像と音をそろえて書くので、閉じていない側を待ったまま止まってしまう
+        let pipe = stdin.fileHandleForWriting
+        let closed = DispatchGroup()
+        closed.enter()
+        videoQueue.async {
+            try? pipe.close()
+            closed.leave()
+        }
+        closed.enter()
+        audioQueue.async { [self] in
+            lock.lock(); let h = audioHandle; lock.unlock()
+            try? h?.close()
+            closed.leave()
+        }
+        func waitExit(_ seconds: TimeInterval) {
+            let deadline = Date().addingTimeInterval(seconds)
+            while process.isRunning && Date() < deadline { Thread.sleep(forTimeInterval: 0.05) }
+        }
+        waitExit(wait)
+        if process.isRunning {
+            // 終わらなければ Ctrl+C と同じ合図（ffmpeg はファイルを書き終えてから終わる）、それでもだめなら止める
+            process.interrupt()
+            waitExit(5)
+            if process.isRunning { process.terminate() }
+        }
+        _ = closed.wait(timeout: .now() + 2)
         lock.lock()
         if state != .failed { state = .stopped }
         lock.unlock()

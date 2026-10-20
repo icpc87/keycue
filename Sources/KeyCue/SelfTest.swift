@@ -265,6 +265,10 @@ enum SelfTest {
             runAlpha(model: model, file: URL(fileURLWithPath: f), background: URL(fileURLWithPath: bg))
             return
         }
+        if let f = ProcessInfo.processInfo.environment["KEYCUE_SELFTEST_VCAM"] {
+            runVirtualCamera(model: model, folder: URL(fileURLWithPath: f))
+            return
+        }
         if let f = ProcessInfo.processInfo.environment["KEYCUE_SELFTEST_RECORD"] {
             runRecord(model: model, folder: URL(fileURLWithPath: f))
             return
@@ -1006,6 +1010,7 @@ extension SelfTest {
         func check(_ name: String, _ ok: Bool) { results.append(ok); log("\(ok ? "PASS" : "FAIL")  \(name)") }
         var step = 0
         var files: [URL] = []
+        var stopAsked = Date()
         Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { timer in
             step += 1
             switch step {
@@ -1027,8 +1032,12 @@ extension SelfTest {
             case 10:
                 for o in model.feed.outputs { log("  \(o.spec.name): \(Int(o.bitrateKbps)) kbps \(o.encodeFps) fps dropped=\(o.droppedFrames) \(o.error ?? "")") }
                 model.feed.stopAll(.record)
+                stopAsked = Date()
             case 11...40:
                 guard model.feed.outputs.isEmpty else { return }
+                let took = Date().timeIntervalSince(stopAsked)
+                log("  stop took \(String(format: "%.1f", took)) s")
+                check("record: stopping finishes quickly", took < 6)
                 step = 41
                 timer.invalidate()
                 Task { @MainActor in
@@ -1109,5 +1118,91 @@ extension SelfTest {
             log("  \(name): audio peak \(String(format: "%.3f", peak))")
             check("\(name): audio is not silent", peak > 0.005)
         }
+    }
+}
+
+extension SelfTest {
+    /// 仮想カメラの確認：KEYCUE_SELFTEST_VCAM=<素材フォルダ>（仮想カメラを入れてある Mac で）
+    /// 動画を流して仮想カメラを始め、カメラ「KeyCue」を自分で開いて、届いたコマが動画かどうかを見る
+    static func runVirtualCamera(model: AppModel, folder: URL) {
+        let q = UInt16(kVK_ANSI_Q)
+        model.masterVolume = 0
+        model.assign(folder.appendingPathComponent("clip.mp4"), to: q)
+        var results: [Bool] = []
+        func check(_ name: String, _ ok: Bool) { results.append(ok); log("\(ok ? "PASS" : "FAIL")  \(name)") }
+        let sink = CameraProbe()
+        var step = 0
+        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { timer in
+            step += 1
+            switch step {
+            case 1:
+                if model.info(for: q)?.loading ?? true { step = 0; return }
+                model.handleKey(code: q, down: true, shift: false, isRepeat: false)
+                model.virtualCamera.start()
+            case 2...20:
+                // 拡張を入れ替えているあいだは待つ
+                guard model.virtualCamera.state == .running || step == 20 else { return }
+                log("  camera state: \(model.virtualCamera.state)")
+                check("vcam: running", model.virtualCamera.state == .running)
+                sink.start()
+                step = 21
+            case 27:
+                log("  frames sent: \(model.virtualCamera.framesSent), received: \(sink.frames) (black \(sink.blackFrames)), brightness: \(String(format: "%.3f", sink.brightness)) \(sink.error ?? "")")
+                check("vcam: KeyCue sent frames to the camera", model.virtualCamera.framesSent > 30)
+                check("vcam: camera delivered frames", sink.frames > 10)
+                check("vcam: picture is the clip (not black)", sink.brightness > 0.05)
+                check("vcam: no black frames mixed in", sink.blackFrames < sink.frames / 10)
+                sink.stop()
+                model.virtualCamera.stop()
+                log(results.allSatisfy { $0 } ? "ALL PASS (vcam)" : "FAILED: vcam")
+                timer.invalidate()
+                exit(results.allSatisfy { $0 } ? 0 : 1)
+            default:
+                break
+            }
+        }
+    }
+}
+
+/// カメラ「KeyCue」を開いてコマを数える（テスト用）
+final class CameraProbe: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+    private let session = AVCaptureSession()
+    private let queue = DispatchQueue(label: "KeyCue.CameraProbe")
+    private(set) var frames = 0
+    private(set) var blackFrames = 0
+    private(set) var brightness = 0.0
+    private(set) var error: String?
+
+    func start() {
+        guard let device = AVCaptureDevice(uniqueID: VirtualCamera.deviceUID) else { error = "no KeyCue camera"; return }
+        do {
+            let input = try AVCaptureDeviceInput(device: device)
+            session.addInput(input)
+            let out = AVCaptureVideoDataOutput()
+            out.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+            out.setSampleBufferDelegate(self, queue: queue)
+            session.addOutput(out)
+            session.startRunning()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    func stop() { session.stopRunning() }
+
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        frames += 1
+        guard let pb = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        CVPixelBufferLockBaseAddress(pb, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(pb, .readOnly) }
+        guard let base = CVPixelBufferGetBaseAddress(pb) else { return }
+        let w = CVPixelBufferGetWidth(pb), h = CVPixelBufferGetHeight(pb), bpr = CVPixelBufferGetBytesPerRow(pb)
+        var sum = 0, n = 0
+        for y in stride(from: 0, to: h, by: 37) {
+            let row = base.advanced(by: y * bpr).assumingMemoryBound(to: UInt8.self)
+            for x in stride(from: 0, to: w, by: 37) { sum += Int(row[x * 4]) + Int(row[x * 4 + 1]) + Int(row[x * 4 + 2]); n += 1 }
+        }
+        let b = Double(sum) / Double(max(n, 1)) / 3 / 255
+        if b < 0.02 { blackFrames += 1 } else { brightness = b }
     }
 }

@@ -42,21 +42,17 @@ final class VirtualCamera: NSObject, ObservableObject {
     // MARK: 始める・止める
 
     func start() {
-        if connect() {
-            beginFeeding()
-            return
-        }
         let bundled = Bundle.main.bundleURL.appendingPathComponent("Contents/Library/SystemExtensions/\(VirtualCamera.extensionID).systemextension")
         guard FileManager.default.fileExists(atPath: bundled.path) else {
             state = .failed("この KeyCue には仮想カメラが入っていません")
             return
         }
-        // カメラがまだない：拡張を入れる（初回はシステム設定で許可がいる）
-        state = .installing("仮想カメラを入れています…")
+        // 拡張を入れる。入っているものがこの版と違えば入れ替え、同じなら何もしない（初回はシステム設定で許可がいる）。
+        // 終わったらカメラを探してつなぐ
+        state = .installing("仮想カメラを用意しています…")
         let r = OSSystemExtensionRequest.activationRequest(forExtensionWithIdentifier: VirtualCamera.extensionID, queue: .main)
         r.delegate = self
         OSSystemExtensionManager.shared.submitRequest(r)
-        waitForDevice()
     }
 
     func stop() {
@@ -164,8 +160,8 @@ final class VirtualCamera: NSObject, ObservableObject {
                                               mElement: CMIOObjectPropertyElement(kCMIOObjectPropertyElementMain))
             var direction: UInt32 = 0
             var u: UInt32 = 0
-            // 0 = 出力（ほかのアプリが見る）、1 = 入力（こちらから入れる）
-            if CMIOObjectGetPropertyData(s, &a, 0, nil, UInt32(MemoryLayout<UInt32>.size), &u, &direction) == noErr, direction == 1 {
+            // 機器から見た向き：1 = 入力（ほかのアプリが見るカメラの映像）、0 = 出力（こちらから入れる sink）
+            if CMIOObjectGetPropertyData(s, &a, 0, nil, UInt32(MemoryLayout<UInt32>.size), &u, &direction) == noErr, direction == 0 {
                 return s
             }
         }
@@ -239,7 +235,7 @@ extension VirtualCamera: OSSystemExtensionRequestDelegate {
         if result == .willCompleteAfterReboot {
             state = .failed("Mac を再起動すると仮想カメラが使えるようになります")
         }
-        // 入ったら waitForDevice がカメラを見つけてつなぐ
+        else { waitForDevice() }
     }
 
     func request(_ request: OSSystemExtensionRequest, didFailWithError error: Error) {
@@ -247,6 +243,11 @@ extension VirtualCamera: OSSystemExtensionRequestDelegate {
         var message = e.localizedDescription
         if e.domain == OSSystemExtensionErrorDomain, e.code == OSSystemExtensionError.unsupportedParentBundleLocation.rawValue {
             message = "仮想カメラを入れるには、KeyCue を「アプリケーション」フォルダに入れてから起動してください"
+        }
+        // 入れられなくても、前に入れたカメラがあればそれを使う（開発中の版など）
+        if VirtualCamera.findDevice() != nil {
+            waitForDevice()
+            return
         }
         retry?.invalidate()
         retry = nil

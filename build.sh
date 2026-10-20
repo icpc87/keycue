@@ -51,7 +51,8 @@ if [[ -f "$PROFILES/KeyCue.provisionprofile" && -x "$CAMBIN" ]]; then
   cp "$CAMBIN" "$SYSEXT/Contents/MacOS/jp.ic2.keycue.camera"
   sed "s/TEAMID/$TEAM/" Resources/KeyCueCamera-Info.plist > "$SYSEXT/Contents/Info.plist"
   /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(tr -d '[:space:]' < VERSION)" "$SYSEXT/Contents/Info.plist"
-  /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(tr -d '[:space:]' < BUILD_NUMBER)" "$SYSEXT/Contents/Info.plist"
+  # 拡張はビルドするたびに版を変える（同じ版だと、アプリを更新しても入っている拡張が入れ替わらない）
+  /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(tr -d '[:space:]' < BUILD_NUMBER).$(date +%y%m%d).$(date +%H%M%S)" "$SYSEXT/Contents/Info.plist"
   # 拡張のプロファイルはなくてもよい（サンドボックスとチーム名付きの App Group だけなので）
   CAMPROFILE=0
   [[ -f "$PROFILES/KeyCueCamera.provisionprofile" ]] && { cp "$PROFILES/KeyCueCamera.provisionprofile" "$SYSEXT/Contents/embedded.provisionprofile"; CAMPROFILE=1; }
