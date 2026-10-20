@@ -100,7 +100,7 @@ private struct LayerRow: View {
                     .help("このレイヤーのカードを小さく・大きくします")
                 }
                 .frame(width: 100, alignment: .leading)
-                ClearLayerCard(model: model, layer: layer, playing: playing, width: cardWidth * 0.55)
+                ClearLayerCard(model: model, layer: layer, playing: playing, width: width)
                 if codes.isEmpty {
                     Text("カードをここへドラッグすると、レイヤー \(layer) になります")
                         .font(.caption).foregroundStyle(.tertiary)
@@ -317,12 +317,13 @@ private struct ClearLayerCard: View {
         let picked = model.layerPreview[layer] == .some(nil)
         VStack(spacing: 0) {
             Color.black.aspectRatio(16 / 9, contentMode: .fit)
-            Text("レイヤーを消去").font(.caption2).foregroundStyle(.white)
-                .frame(maxWidth: .infinity).frame(height: 20).background(Color(white: 0.25))
+            // 素材のカードと同じ大きさ・同じ名前の帯
+            Text("レイヤーを消去").font(.system(size: 12)).foregroundStyle(.white).lineLimit(1)
+                .frame(maxWidth: .infinity).frame(height: 24).background(Color(white: 0.25))
         }
         .frame(width: width)
-        .clipShape(RoundedRectangle(cornerRadius: 5))
-        .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(picked ? Color(red: 1, green: 0.85, blue: 0.1) : Color(white: 0.35), lineWidth: picked ? 3 : 1))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(picked ? Color(red: 1, green: 0.85, blue: 0.1) : Color(white: 0.35), lineWidth: picked ? 3 : 1))
         .contentShape(Rectangle())
         .onTapGesture {
             if Prefs.layerPreviewMode {

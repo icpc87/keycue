@@ -509,7 +509,8 @@ public sealed class LayerCardsView : CardViewBase
         var dock = new DockPanel();
         DockPanel.SetDock(head, Dock.Left);
         dock.Children.Add(head);
-        var clear = ClearCard(layer, playing, width * 0.55);
+        // 素材のカードと同じ大きさ
+        var clear = ClearCard(layer, playing, width * scale);
         DockPanel.SetDock(clear, Dock.Left);
         dock.Children.Add(clear);
         if (codes.Count == 0)
@@ -582,16 +583,17 @@ public sealed class LayerCardsView : CardViewBase
     private UIElement ClearCard(int layer, List<ushort> playing, double width)
     {
         var picked = Model.LayerPreview.TryGetValue(layer, out var t) && t == null;
-        var g = new Grid { Width = width, Margin = new Thickness(0, 4, 10, 6) };
+        var g = new Grid { Width = width };
         g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(width * 9 / 16) });
-        g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(20) });
-        var label = new Border { Background = new SolidColorBrush(Color.FromRgb(64, 64, 64)), Child = new TextBlock { Text = "レイヤーを消去", Foreground = Brushes.White, FontSize = 10.5, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
+        g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(24) });
+        var label = new Border { Background = new SolidColorBrush(Color.FromRgb(64, 64, 64)), Child = new TextBlock { Text = "レイヤーを消去", Foreground = Brushes.White, FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
         Grid.SetRow(label, 1);
         g.Children.Add(new Border { Background = Brushes.Black });
         g.Children.Add(label);
         var card = new Border
         {
-            Child = g, CornerRadius = new CornerRadius(5), ClipToBounds = true, Cursor = Cursors.Hand, VerticalAlignment = VerticalAlignment.Top,
+            Child = g, CornerRadius = new CornerRadius(6), ClipToBounds = true, Cursor = Cursors.Hand, VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 4, 12, 12),
             BorderBrush = picked ? new SolidColorBrush(Color.FromRgb(255, 217, 26)) : new SolidColorBrush(Color.FromRgb(90, 90, 90)), BorderThickness = new Thickness(picked ? 3 : 1),
             ToolTip = Prefs.LayerPreviewMode ? "プレビューでこのレイヤーを空にします（「ライブへ」で消えます）" : "このレイヤーで流れている素材を止めます",
         };
