@@ -6,3 +6,6 @@ bin/
 obj/
 *.user
 .DS_Store
+# 署名用のプロファイル（~/Library/Developer/KeyCue/profiles に置く）
+*.provisionprofile
+/windows/KeyCueCamera/out/
