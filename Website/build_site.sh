@@ -21,7 +21,7 @@ mkdir -p "$OUT/images" "$OUT/old"
 for f in "$OUT"/KeyCue-*.dmg(N); do [[ "$(basename "$f")" == "$DMG" ]] || mv "$f" "$OUT/old/"; done
 rm -f "$OUT"/KeyCue-*.zip(N)
 cp "$REL/$DMG" "$REL/$ZIP" "$OUT/"
-cp Website/images/*.png "$OUT/images/"
+cp Website/images/*.png Website/images/*.jpg "$OUT/images/"
 
 SIZE=$(perl -e 'printf("%.1f MB", (-s $ARGV[0]) / 1000000)' "$OUT/$DMG")
 # ページ（変更点は 1 行ずつ <li> に）

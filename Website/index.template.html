@@ -7,7 +7,7 @@
 <meta name="description" content="KeyCue は、キーボードのキーに音声・動画・画像・スライドを割り当てて、押すだけで再生できる Mac のアプリです。多チャンネル出力、複数モニターへの映像出力、ページを切り替えるプレイリストに対応。">
 <meta property="og:title" content="KeyCue">
 <meta property="og:description" content="キーを押すだけで、音と映像とスライドを。ライブ・イベント・礼拝のための Mac 用キュー再生アプリ。">
-<meta property="og:image" content="https://keycue.ic2.jp/images/screenshot.png">
+<meta property="og:image" content="https://keycue.ic2.jp/images/screenshot.jpg">
 <link rel="icon" href="images/favicon.png">
 <style>
   :root {
@@ -84,6 +84,13 @@
 
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: center; }
   .two img { width: 100%; border-radius: 12px; border: 1px solid var(--line); }
+  .tour h3 { font-size: 21px; margin: 0 0 8px; }
+  .tour p { color: var(--muted); margin: 0 0 12px; }
+  .feature { display: grid; grid-template-columns: 1.6fr 1fr; gap: 32px; align-items: center; margin: 40px 0 56px; }
+  .feature.rev { grid-template-columns: 1fr 1.6fr; }
+  .feature.rev > a { order: 2; }
+  .feature a { display: block; cursor: zoom-in; }
+  .feature img { width: 100%; border-radius: 12px; border: 1px solid var(--line); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); }
   ul.check { padding: 0; list-style: none; margin: 0; }
   ul.check li { padding-left: 28px; position: relative; margin: 8px 0; }
   ul.check li::before { content: "✓"; position: absolute; left: 0; color: var(--accent2); font-weight: 700; }
@@ -121,6 +128,8 @@
     .hero h1 { font-size: 38px; }
     .hero .tag { font-size: 18px; }
     .two { grid-template-columns: 1fr; }
+    .feature, .feature.rev { grid-template-columns: 1fr; }
+    .feature.rev > a { order: 0; }
     header.top nav { display: none; }
   }
 </style>
@@ -149,7 +158,7 @@
     <div class="meta dl-meta">macOS 14 以降 · Apple Silicon / Intel · 無料</div>
   </div>
   <div class="shot wrap">
-    <img src="images/screenshot.png" alt="KeyCue の画面。キーボードに素材が並び、左にプレイリスト、右に映像モニターと再生中の素材">
+    <img src="images/screenshot.jpg" alt="KeyCue の画面。キーボードに素材が並び、左にプレイリスト、右に映像モニターと再生中の素材">
   </div>
 </div>
 
@@ -187,6 +196,71 @@
       </ul>
     </div>
     <img src="images/routing.png" alt="出力ルーティングの表">
+  </div>
+</section>
+
+<section class="tour">
+  <div class="wrap">
+    <h2>画面で見る</h2>
+    <p class="lead">本番の操作は、キーかクリックだけ。表示は「キーボード」「グリッド」「レイヤー」から選べます（設定 › 一般）。</p>
+
+    <div class="feature">
+      <a href="images/shot-layers.jpg" title="クリックで大きく見る"><img src="images/shot-layers.jpg" alt="レイヤー表示。上にプレビューとライブの画面、下にレイヤーごとの段と素材のカード" loading="lazy"></a>
+      <div>
+        <h3>レイヤー表示とプレビュー／ライブ</h3>
+        <p>Wirecast のように、映像を 9 段のレイヤーに重ねて出します。カードのクリックでプレビューに組み、「ライブへ」でカットかスムーズに切り替え。</p>
+        <ul class="check">
+          <li>プレビュー・ライブの画面、段の高さ、カードの大きさをドラッグで調整</li>
+          <li>背景・動画・テロップを重ね、透明部分（ProRes 4444 など）もそのまま</li>
+          <li>「レイヤーを消去」でその段だけ消す</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="feature rev">
+      <a href="images/shot-output.jpg" title="クリックで大きく見る"><img src="images/shot-output.jpg" alt="映像出力の画面。背景の上に、オープニングのタイトルと名前のテロップが重なっている" loading="lazy"></a>
+      <div>
+        <h3>映像出力</h3>
+        <p>ウィンドウと、つないだディスプレイの全画面に同時に出せます。レイヤーの順に重ねるので、テロップは動画の上に。</p>
+        <ul class="check">
+          <li>ディゾルブ・黒や白を経由するフェードなど、切り替え効果を素材ごとに</li>
+          <li>キーごとに出す画面を絞れる</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="feature">
+      <a href="images/shot-grid.jpg" title="クリックで大きく見る"><img src="images/shot-grid.jpg" alt="グリッド表示。素材がサムネイルのカードで並び、音声は波形で表示される" loading="lazy"></a>
+      <div>
+        <h3>グリッド表示</h3>
+        <p>ProPresenter のように、素材をサムネイルで並べて、クリックで出します。音声は波形、スライドは 1 枚目の絵、流れているものはオレンジの枠で分かります。</p>
+      </div>
+    </div>
+
+    <div class="feature rev">
+      <a href="images/shot-record.jpg" title="クリックで大きく見る"><img src="images/shot-record.jpg" alt="録画と仮想カメラを使っている画面。上のバーの録画と仮想カメラのボタンが点灯し、右の欄に録画の経過時間とビットレートが出ている" loading="lazy"></a>
+      <div>
+        <h3>録画・配信・仮想カメラ</h3>
+        <p>出している絵と音（ライブ）を、そのまま録画・配信。仮想カメラ「KeyCue」として、Zoom・Teams・OBS などのカメラにもなります。</p>
+        <ul class="check">
+          <li>録画（H.264・HEVC・ProRes）と配信（YouTube・Twitch などの RTMP / RTMPS）をいくつでも同時に</li>
+          <li>右の欄に経過時間・ビットレート・コマ落ちを表示</li>
+          <li>録画を止めると、すぐにファイルを書き終える</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="feature">
+      <a href="images/shot-settings.jpg" title="クリックで大きく見る"><img src="images/shot-settings.jpg" alt="設定の録画・配信タブ。出力の大きさとコマ数、録画と配信の出力の一覧" loading="lazy"></a>
+      <div>
+        <h3>録画・配信の設定</h3>
+        <p>出力の大きさ（HD〜4K）とコマ数、録画の保存先・ファイル名・形式、配信先を設定 › 録画・配信 で。オンにしたものを「録画」「配信」ボタンでまとめて始めます。</p>
+        <ul class="check">
+          <li>配信キーは Mac のキーチェーンに保存</li>
+          <li>音は出力 1-2 / 1-4 / 1-8 ch から選べる</li>
+        </ul>
+      </div>
+    </div>
   </div>
 </section>
 

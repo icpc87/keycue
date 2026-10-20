@@ -21,7 +21,7 @@ RSYNC=(rsync -rlt --checksum --itemize-changes "${DRY[@]}")
 echo "==> 1. DMG・ZIP"
 "${RSYNC[@]}" --include 'KeyCue-*.dmg' --include 'KeyCue-*.zip' --include 'old/' --include 'old/KeyCue-*.dmg' --include 'windows/' --include 'windows/KeyCue-Windows-*.zip' --include 'windows/KeyCue-Windows-*-setup.exe' --exclude '*' "$OUT/" "$HOST:$REMOTE/"
 echo "==> 2. ページ"
-"${RSYNC[@]}" --include 'index.html' --include '.htaccess' --include 'images/' --include 'images/*.png' --exclude '*' "$OUT/" "$HOST:$REMOTE/"
+"${RSYNC[@]}" --include 'index.html' --include '.htaccess' --include 'images/' --include 'images/*.png' --include 'images/*.jpg' --exclude '*' "$OUT/" "$HOST:$REMOTE/"
 echo "==> 3. version.json（Windows 版があれば version-windows.json も）"
 "${RSYNC[@]}" "$OUT/version.json" "$HOST:$REMOTE/version.json"
 [[ -f "$OUT/version-windows.json" ]] && "${RSYNC[@]}" "$OUT/version-windows.json" "$HOST:$REMOTE/version-windows.json"

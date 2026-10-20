@@ -265,6 +265,10 @@ enum SelfTest {
             runAlpha(model: model, file: URL(fileURLWithPath: f), background: URL(fileURLWithPath: bg))
             return
         }
+        if let f = ProcessInfo.processInfo.environment["KEYCUE_SELFTEST_SHOWCASE"] {
+            runShowcase(model: model, folder: URL(fileURLWithPath: f))
+            return
+        }
         if let f = ProcessInfo.processInfo.environment["KEYCUE_SELFTEST_VCAM"] {
             runVirtualCamera(model: model, folder: URL(fileURLWithPath: f))
             return
@@ -1218,5 +1222,78 @@ final class CameraProbe: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate 
         }
         let b = Double(sum) / Double(max(n, 1)) / 3 / 255
         if b < 0.02 { blackFrames += 1 } else { brightness = b }
+    }
+}
+
+extension SelfTest {
+    /// サイト用の画面写真：KEYCUE_SELFTEST_SHOWCASE=<素材フォルダ> KEYCUE_SHOWCASE_MODE=keyboard|grid|layers|record
+    /// （KEYCUE_SELFTEST_SHOTS に写真を書く。表示は -pref.mainView で選ぶ）
+    static func runShowcase(model: AppModel, folder: URL) {
+        func k(_ code: Int) -> UInt16 { UInt16(code) }
+        let mode = ProcessInfo.processInfo.environment["KEYCUE_SHOWCASE_MODE"] ?? "keyboard"
+        model.masterVolume = 0
+        func put(_ code: Int, _ name: String, layer: Int? = nil, color: Int? = nil) {
+            model.assign(folder.appendingPathComponent(name), to: k(code))
+            if let layer { model.setLayer(k(code), layer) }
+            if let color, var a = model.assignments[k(code)] { a.colorIndex = color; model.update(k(code), a) }
+        }
+        model.pages[0].name = "開演前"
+        put(kVK_ANSI_Q, "背景.png", layer: 3, color: 5)
+        put(kVK_ANSI_W, "入場BGM.wav", color: 2)
+        model.newPage()
+        model.pages[1].name = "オープニング"
+        let keys: [(Int, String, Int?, Int)] = [
+            (kVK_ANSI_Q, "オープニング映像.mp4", 5, 0), (kVK_ANSI_W, "入場BGM.wav", nil, 2), (kVK_ANSI_E, "拍手.wav", nil, 3),
+            (kVK_ANSI_R, "アナウンス.wav", nil, 4), (kVK_ANSI_A, "8ch サラウンド.wav", nil, 6), (kVK_ANSI_S, "4ch ステージ.mov", 4, 7),
+            (kVK_ANSI_D, "本編スライド.pdf", 6, 1), (kVK_ANSI_F, "背景.png", 3, 5), (kVK_ANSI_G, "テロップ.mov", 8, 8), (kVK_ANSI_1, "拍手.wav", nil, 3),
+        ]
+        for (code, name, layer, color) in keys { put(code, name, layer: layer, color: color) }
+        model.newPage()
+        model.pages[2].name = "本編"
+        model.switchPage(to: 1)
+        if let w = NSApp.windows.first(where: { $0.title.hasPrefix("KeyCue") }), let screen = w.screen {
+            let size = NSSize(width: 1440, height: 900)
+            let v = screen.visibleFrame
+            w.setFrame(NSRect(x: v.midX - size.width / 2, y: v.midY - size.height / 2, width: size.width, height: size.height), display: true)
+        }
+        let out = FileManager.default.temporaryDirectory.appendingPathComponent("keycue-showcase-\(UUID().uuidString)")
+        // 設定画面の写真用の出力（その場だけ。利用者の設定は変えない）
+        let shown = [OutputSpec(name: "録画（H.264・MP4）", kind: .record, folder: "~/Movies/KeyCue", videoBitrateKbps: 20000),
+                     OutputSpec(name: "YouTube", kind: .stream, url: OutputSpec.services[0].url, videoBitrateKbps: 6000)]
+        var args = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+        args[Prefs.outputsKey] = try? JSONEncoder().encode(shown)
+        UserDefaults.standard.setVolatileDomain(args, forName: UserDefaults.argumentDomain)
+        var step = 0
+        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { timer in
+            step += 1
+            switch step {
+            case 1:
+                if keys.contains(where: { model.info(for: k($0.0))?.loading ?? true }) { step = 0; return }
+                for code in [kVK_ANSI_F, kVK_ANSI_Q, kVK_ANSI_G, kVK_ANSI_W] {
+                    model.handleKey(code: k(code), down: true, shift: false, isRepeat: false)
+                }
+                model.selectedKey = k(kVK_ANSI_F)
+                if mode == "layers" {
+                    model.previewPick(k(kVK_ANSI_D))
+                }
+                if mode == "record" {
+                    try? model.feed.start(OutputSpec(name: "録画（H.264・MP4）", kind: .record, folder: out.path, videoBitrateKbps: 12000))
+                    model.virtualCamera.start()
+                }
+            case 8:
+                shoot("showcase-\(mode)")
+                if mode == "record" { AppDelegate.openSettings(tab: 4) }
+            case 10:
+                if mode == "record" { shoot("showcase-settings") }
+            case 11:
+                model.feed.stopEverything()
+                model.virtualCamera.stop()
+                try? FileManager.default.removeItem(at: out)
+                timer.invalidate()
+                exit(0)
+            default:
+                break
+            }
+        }
     }
 }
