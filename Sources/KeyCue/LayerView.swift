@@ -63,7 +63,7 @@ struct LayerView: View {
     }
 }
 
-/// 1 つのレイヤーの段。左に番号と、いま出ている素材・止めるボタン
+/// 1 つのレイヤーの段。左に番号と、いま出ている素材
 private struct LayerRow: View {
     let model: AppModel
     @ObservedObject var live: LiveState
@@ -72,46 +72,68 @@ private struct LayerRow: View {
     let cardWidth: CGFloat
 
     @State private var targeted = false
+    @ObservedObject private var sizes = LayerSizes.shared
+    @State private var contentHeight: CGFloat = 0
 
     var body: some View {
         let playing = codes.filter { live.playing.contains($0) }
-        HStack(alignment: .center, spacing: 8) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("レイヤー \(layer)").font(.system(size: 13, weight: .semibold))
-                if layer == 9 || layer == 1 {
-                    Text(layer == 9 ? "いちばん前" : "いちばん後ろ").font(.caption2).foregroundStyle(.secondary)
-                }
-                if let first = playing.first, let a = model.assignments[first] {
-                    Label(a.displayName, systemImage: "play.fill")
-                        .font(.caption).lineLimit(1)
-                        .foregroundStyle(Color(red: 1, green: 0.6, blue: 0.3))
-                    Button("止める") {
-                        for c in playing { model.stopKey(c, fade: model.assignments[c]?.fadeOut ?? 1) }
+        let width = cardWidth * sizes.scale(layer)
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 8) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("レイヤー \(layer)").font(.system(size: 13, weight: .semibold))
+                    if layer == 9 || layer == 1 {
+                        Text(layer == 9 ? "いちばん前" : "いちばん後ろ").font(.caption2).foregroundStyle(.secondary)
                     }
-                    .controlSize(.small)
-                    .help("このレイヤーで流れている素材をフェードして止めます")
+                    if let first = playing.first, let a = model.assignments[first] {
+                        Label(a.displayName, systemImage: "play.fill")
+                            .font(.caption).lineLimit(1)
+                            .foregroundStyle(Color(red: 1, green: 0.6, blue: 0.3))
+                    }
+                    HStack(spacing: 6) {
+                        Button { sizes.stepScale(layer, -1) } label: { Image(systemName: "minus.magnifyingglass") }
+                            .disabled(sizes.scale(layer) <= LayerSizes.scaleSteps.first!)
+                        Button { sizes.stepScale(layer, 1) } label: { Image(systemName: "plus.magnifyingglass") }
+                            .disabled(sizes.scale(layer) >= LayerSizes.scaleSteps.last!)
+                    }
+                    .buttonStyle(.borderless)
+                    .help("このレイヤーのカードを小さく・大きくします")
                 }
-            }
-            .frame(width: 100, alignment: .leading)
-            ClearLayerCard(model: model, layer: layer, playing: playing, width: cardWidth * 0.55)
-            if codes.isEmpty {
-                Text("カードをここへドラッグすると、レイヤー \(layer) になります")
-                    .font(.caption).foregroundStyle(.tertiary)
-                    .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
-            } else {
-                ScrollView(.horizontal) {
-                    LazyHStack(spacing: 10) {
+                .frame(width: 100, alignment: .leading)
+                ClearLayerCard(model: model, layer: layer, playing: playing, width: cardWidth * 0.55)
+                if codes.isEmpty {
+                    Text("カードをここへドラッグすると、レイヤー \(layer) になります")
+                        .font(.caption).foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
+                } else {
+                    // 段に入りきらなければ折り返して次の行へ（横にはみ出して隠れないように）。
+                    // 段の高さを決めてあれば、その中で縦にスクロール
+                    let grid = LazyVGrid(columns: [GridItem(.adaptive(minimum: width, maximum: width), spacing: 10, alignment: .leading)],
+                                         alignment: .leading, spacing: 10) {
                         ForEach(codes, id: \.self) { code in
                             ThumbCard.make(model, live, code, layerMode: true)
                                 .equatable()
-                                .frame(width: cardWidth)
+                                .frame(width: width)
                         }
                     }
                     .padding(.vertical, 3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(GeometryReader { g in
+                        Color.clear
+                            .onAppear { contentHeight = g.size.height }
+                            .onChange(of: g.size.height) { _, h in contentHeight = h }
+                    })
+                    if let h = sizes.heights[layer] {
+                        ScrollView(.vertical) { grid }.frame(height: CGFloat(h))
+                    } else {
+                        grid
+                    }
                 }
             }
+            RowResizeHandle(sizes: sizes, layer: layer, contentHeight: max(contentHeight, 60))
         }
-        .padding(6)
+        .padding(.horizontal, 6)
+        .padding(.top, 6)
         .background(RoundedRectangle(cornerRadius: 6).fill(background(playing: !playing.isEmpty)))
         .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.accentColor, lineWidth: targeted ? 2 : 0))
         .onDrop(of: [.plainText, .fileURL], isTargeted: $targeted) { providers in drop(providers) }
@@ -310,5 +332,76 @@ private struct ClearLayerCard: View {
             }
         }
         .help(Prefs.layerPreviewMode ? "プレビューでこのレイヤーを空にします（「ライブへ」で消えます）" : "このレイヤーで流れている素材を止めます")
+    }
+}
+
+/// レイヤーごとの段の高さとカードの大きさ（全インスタンス共通で覚えておく）
+final class LayerSizes: ObservableObject {
+    static let shared = LayerSizes()
+    private static let heightsKey = "pref.layerHeights"
+    private static let scalesKey = "pref.layerCardScales"
+    static let scaleSteps: [Double] = [0.5, 0.65, 0.8, 1, 1.25, 1.5, 1.75, 2]
+
+    /// 段の高さ（入っていなければ、カードが全部見える高さ）
+    @Published private(set) var heights: [Int: Double]
+    /// カードの大きさ（表示全体の大きさに掛ける）
+    @Published private(set) var scales: [Int: Double]
+
+    private init() {
+        func load(_ key: String) -> [Int: Double] {
+            let d = UserDefaults.standard.dictionary(forKey: key) as? [String: Double] ?? [:]
+            return Dictionary(uniqueKeysWithValues: d.compactMap { k, v in Int(k).map { ($0, v) } })
+        }
+        heights = load(LayerSizes.heightsKey)
+        scales = load(LayerSizes.scalesKey)
+    }
+
+    func scale(_ layer: Int) -> Double { scales[layer] ?? 1 }
+
+    func setHeight(_ layer: Int, _ h: Double?) {
+        heights[layer] = h.map { max(50, $0) }
+        save(heights, LayerSizes.heightsKey)
+    }
+
+    /// カードを 1 段階大きく（+1）・小さく（-1）
+    func stepScale(_ layer: Int, _ by: Int) {
+        let steps = LayerSizes.scaleSteps
+        let i = steps.firstIndex { $0 >= scale(layer) - 0.001 } ?? 3
+        let v = steps[min(max(i + by, 0), steps.count - 1)]
+        scales[layer] = v == 1 ? nil : v
+        save(scales, LayerSizes.scalesKey)
+    }
+
+    private func save(_ d: [Int: Double], _ key: String) {
+        UserDefaults.standard.set(Dictionary(uniqueKeysWithValues: d.map { (String($0.key), $0.value) }), forKey: key)
+    }
+}
+
+/// 段の下のふち：ドラッグで段の高さを変える（ダブルクリックで自動に戻す）
+private struct RowResizeHandle: View {
+    @ObservedObject var sizes: LayerSizes
+    let layer: Int
+    let contentHeight: CGFloat
+    @State private var start: CGFloat?
+    @State private var hover = false
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 2)
+            .fill(Color.white.opacity(hover || start != nil ? 0.35 : 0.1))
+            .frame(width: 48, height: 4)
+            .frame(maxWidth: .infinity, minHeight: 9)
+            .contentShape(Rectangle())
+            .onHover { inside in
+                hover = inside
+                if inside { NSCursor.resizeUpDown.push() } else { NSCursor.pop() }
+            }
+            .gesture(DragGesture(minimumDistance: 1)
+                .onChanged { v in
+                    if start == nil { start = CGFloat(sizes.heights[layer] ?? Double(contentHeight)) }
+                    sizes.setHeight(layer, Double(start! + v.translation.height))
+                }
+                .onEnded { _ in start = nil })
+            .onTapGesture(count: 2) { sizes.setHeight(layer, nil) }
+            .help("ドラッグでこの段の高さを変えます（ダブルクリックで、カードが全部見える高さに戻します）")
     }
 }

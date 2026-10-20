@@ -142,7 +142,7 @@
     <img class="icon" src="images/icon.png" alt="KeyCue のアイコン">
     <h1>KeyCue</h1>
     <p class="tag">キーを押すだけで、音と映像とスライドを。</p>
-    <p class="sub">キーボードの各キーに音声・動画・画像・Keynote / PowerPoint のスライドを割り当てて、本番ではキーを押すだけ。ライブ、イベント、礼拝、舞台のための Mac 用キュー再生アプリです。</p>
+    <p class="sub">キーボードの各キーに音声・動画・画像・Keynote / PowerPoint のスライドを割り当てて、本番ではキーを押すだけ。ライブ、イベント、礼拝、舞台のためのキュー再生アプリです（Mac・Windows）。</p>
     <a class="btn" href="{{DMG}}">ダウンロード <small>v{{VERSION}} · {{SIZE}}</small></a>
     <div class="meta">macOS 14 以降 · Apple Silicon / Intel · 無料</div>
   </div>
@@ -165,7 +165,9 @@
       <div class="card"><div class="ico">📊</div><h3>素材メーターとシーク</h3><p>素材の ch ごとのレベル、出力 8ch のメーター、テストトーン。再生中の素材はシークバーで位置を変えられます。</p></div>
       <div class="card"><div class="ico">🧩</div><h3>流れ方の設定</h3><p>次の素材が流れたら重ねる／フェードして止める／すぐ止める。グループ分けや映像の重なり順も。</p></div>
       <div class="card"><div class="ico">📹</div><h3>ライブ入力</h3><p>Web カメラ、HDMI などのキャプチャ機器、マイクやオーディオインターフェースの入力も、キーひとつで出し入れ。</p></div>
-      <div class="card"><div class="ico">🖼️</div><h3>グリッドとレイヤー表示</h3><p>キーボードの図のほかに、素材をサムネイルで並べるグリッド表示と、映像の重なり順ごとに段に並べるレイヤー表示も。クリックでもキーと同じに再生できます。</p></div>
+      <div class="card"><div class="ico">🖼️</div><h3>グリッドとレイヤー表示</h3><p>キーボードの図のほかに、素材をサムネイルで並べるグリッド表示と、映像の重なり順ごとに段に並べるレイヤー表示も。レイヤー表示ではプレビューで組んでから「ライブへ」で切り替えられます。</p></div>
+      <div class="card"><div class="ico">⏺️</div><h3>録画と配信</h3><p>出している絵と音を、いくつでも同時に録画（H.264・HEVC・ProRes）・配信（YouTube・Twitch などの RTMP / RTMPS）。</p></div>
+      <div class="card"><div class="ico">🎥</div><h3>仮想カメラ</h3><p>出している絵を、Zoom・Teams・OBS などでカメラ「KeyCue」として使えます。</p></div>
     </div>
   </div>
 </section>
@@ -213,6 +215,7 @@
       <b>インストール：</b>ダウンロードした DMG を開き、KeyCue を「アプリケーション」フォルダへドラッグします。<br>
       <b>動作環境：</b>macOS 14 Sonoma 以降（Apple Silicon / Intel）。pptx の変換には PowerPoint または Keynote、key の変換には Keynote が必要です。<br>
       <b>アップデート：</b>新しい版が出ると KeyCue の中でお知らせし、ボタンひとつで入れ替えられます（メニュー「KeyCue › アップデートを確認…」）。<br>
+      <b>仮想カメラ：</b>初めて使うとき、「システム設定 › 一般 › ログイン項目と機能拡張 › カメラ機能拡張」で KeyCue をオンにします（KeyCue は「アプリケーション」フォルダに入れて使ってください）。<br>
       Apple の公証を受けた Developer ID で署名しています。
     </div>
     <div class="notes">
@@ -237,14 +240,15 @@
       初めて開くとき「Windows によって PC が保護されました」と出たら、「詳細情報」→「実行」を押してください（Windows のコード署名はまだしていません）。<br>
       <b>動作環境：</b>Windows 10（64 ビット）／ 11。ARM64 版は Snapdragon などの ARM の PC 用です。.NET は同梱しています。pptx の変換には PowerPoint（なければ LibreOffice）が必要です。8ch などの多チャンネル出力は ASIO ドライバーで。<br>
       <b>アップデート：</b>新しい版が出ると KeyCue の中でお知らせし、ダウンロードして入れ替えます（メニュー「ツール › アップデートを確認…」）。<br>
-      動画の読み込みに <a href="https://ffmpeg.org/">FFmpeg</a>（LGPL・<a href="https://github.com/BtbN/FFmpeg-Builds">ビルド</a>）を使っています。
+      <b>仮想カメラ：</b>Windows 11 で使えます。初めて使うときだけ、管理者の確認が出ます。<br>
+      動画の読み込みと録画・配信に <a href="https://ffmpeg.org/">FFmpeg</a>（GPL・<a href="https://github.com/BtbN/FFmpeg-Builds">ビルド</a>）を使っています。
     </div>
   </div>
 </section>
 <!--/WIN-->
 
 <footer>
-  <div class="wrap">© 2026 ic2 · KeyCue</div>
+  <div class="wrap">© 2026 ic2 · KeyCue · オープンソース（<a href="https://github.com/icpc87/keycue/blob/main/LICENSE">GPL-3.0</a>）· <a href="https://github.com/icpc87/keycue">ソースコード（GitHub）</a> · <a href="https://github.com/icpc87/keycue/releases/tag/ffmpeg-8.1-source">FFmpeg のソース</a></div>
 </footer>
 
 </body>

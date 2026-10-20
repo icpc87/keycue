@@ -486,17 +486,26 @@ public sealed class LayerCardsView : CardViewBase
     private UIElement LayerRow(int layer, List<ushort> codes, double width)
     {
         var playing = codes.Where(c => Model.Playing.Contains(c)).ToList();
+        ScrollViewer? scroller = null;
         var head = new StackPanel { Width = 104, VerticalAlignment = VerticalAlignment.Center };
         head.Children.Add(Theme.Label($"レイヤー {layer}", 13, weight: FontWeights.SemiBold));
         if (layer is 9 or 1) head.Children.Add(Theme.Caption(layer == 9 ? "いちばん前" : "いちばん後ろ"));
         if (playing.Count > 0 && Model.Assignments.TryGetValue(playing[0], out var pa))
         {
             head.Children.Add(Theme.Label("▶ " + pa.DisplayName, 11.5, Theme.Live));
-            var stop = Theme.Button("止める", () => { foreach (var c in playing) Model.StopKey(c, Model.Assignments.TryGetValue(c, out var x) ? x.FadeOut : 1); }, "このレイヤーで流れている素材をフェードして止めます");
-            stop.HorizontalAlignment = HorizontalAlignment.Left;
-            stop.Margin = new Thickness(0, 3, 0, 0);
-            head.Children.Add(stop);
         }
+        // このレイヤーのカードの大きさ
+        var scale = LayerSizes.Scale(layer);
+        var smaller = Theme.Button("－", () => { LayerSizes.StepScale(layer, -1); QueueRebuild(); }, "このレイヤーのカードを小さくします");
+        var larger = Theme.Button("＋", () => { LayerSizes.StepScale(layer, 1); QueueRebuild(); }, "このレイヤーのカードを大きくします");
+        smaller.IsEnabled = scale > LayerSizes.Steps[0];
+        larger.IsEnabled = scale < LayerSizes.Steps[^1];
+        foreach (var b in new[] { smaller, larger })
+        {
+            b.Padding = new Thickness(6, 0, 6, 0);
+            b.Margin = new Thickness(0, 3, 4, 0);
+        }
+        head.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Children = { smaller, larger } });
         var dock = new DockPanel();
         DockPanel.SetDock(head, Dock.Left);
         dock.Children.Add(head);
@@ -509,12 +518,45 @@ public sealed class LayerCardsView : CardViewBase
         }
         else
         {
-            var line = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
-            foreach (var c in codes) line.Children.Add(Card(c, width, true));
-            dock.Children.Add(new ScrollViewer { Content = line, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, Focusable = false });
+            // 段に入りきらなければ折り返して次の行へ（横にはみ出して隠れないように）。段の高さを決めてあれば、その中で縦にスクロール
+            var line = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+            foreach (var c in codes) line.Children.Add(Card(c, width * scale, true));
+            scroller = new ScrollViewer { Content = line, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Focusable = false };
+            if (LayerSizes.Height(layer) is { } h) scroller.Height = h;
+            dock.Children.Add(scroller);
         }
+        // 段の下のふち：ドラッグで段の高さを変える（ダブルクリックで、カードが全部見える高さに戻す）
+        var grip = new System.Windows.Controls.Primitives.Thumb { Height = 9, Cursor = Cursors.SizeNS, ToolTip = "ドラッグでこの段の高さを変えます（ダブルクリックで、カードが全部見える高さに戻します）" };
+        var gripVisual = new FrameworkElementFactory(typeof(Border));
+        gripVisual.SetValue(Border.BackgroundProperty, Brushes.Transparent);
+        var bar = new FrameworkElementFactory(typeof(Border));
+        bar.SetValue(FrameworkElement.WidthProperty, 48.0);
+        bar.SetValue(FrameworkElement.HeightProperty, 4.0);
+        bar.SetValue(Border.CornerRadiusProperty, new CornerRadius(2));
+        bar.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)));
+        gripVisual.AppendChild(bar);
+        grip.Template = new ControlTemplate(typeof(System.Windows.Controls.Primitives.Thumb)) { VisualTree = gripVisual };
+        grip.DragDelta += (_, e) =>
+        {
+            if (scroller == null) return;
+            var start = double.IsNaN(scroller.Height) ? scroller.ActualHeight : scroller.Height;
+            scroller.Height = Math.Max(50, start + e.VerticalChange);
+        };
+        grip.DragCompleted += (_, _) =>
+        {
+            if (scroller != null && !double.IsNaN(scroller.Height)) LayerSizes.SetHeight(layer, scroller.Height);
+        };
+        grip.MouseDoubleClick += (_, _) =>
+        {
+            LayerSizes.SetHeight(layer, null);
+            if (scroller != null) scroller.Height = double.NaN;
+        };
+        var body = new DockPanel();
+        DockPanel.SetDock(grip, Dock.Bottom);
+        body.Children.Add(grip);
+        body.Children.Add(dock);
         var normal = playing.Count > 0 ? new SolidColorBrush(Color.FromRgb(61, 41, 28)) : (Brush)new SolidColorBrush(Color.FromRgb(41, 41, 41));
-        var row = new Border { Background = normal, CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 6, 8, 2), Margin = new Thickness(0, 0, 0, 6), AllowDrop = true, Child = dock };
+        var row = new Border { Background = normal, CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 6, 8, 2), Margin = new Thickness(0, 0, 0, 6), AllowDrop = true, Child = body };
         row.DragEnter += (_, _) => row.Background = new SolidColorBrush(Color.FromArgb(70, 64, 140, 255));
         row.DragLeave += (_, _) => row.Background = normal;
         row.DragOver += (_, e) =>

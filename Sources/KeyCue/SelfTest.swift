@@ -851,9 +851,22 @@ extension SelfTest {
         // 段がスクロールの外にあれば、見えるところまで動かす
         var ancestor = card.superview
         while let v = ancestor {
-            if let sv = v as? NSScrollView, let doc = sv.documentView { doc.scrollToVisible(card.convert(card.bounds, to: doc)) }
+            if let sv = v as? NSScrollView {
+                let clip = sv.contentView
+                let r = card.convert(card.bounds, to: clip)
+                var o = clip.bounds.origin
+                if r.maxY > clip.bounds.maxY { o.y += r.maxY - clip.bounds.maxY + 20 }
+                if r.minY < clip.bounds.minY { o.y -= clip.bounds.minY - r.minY + 20 }
+                if r.maxX > clip.bounds.maxX { o.x += r.maxX - clip.bounds.maxX + 20 }
+                if r.minX < clip.bounds.minX { o.x -= clip.bounds.minX - r.minX + 20 }
+                clip.scroll(to: o)
+                sv.reflectScrolledClipView(clip)
+            }
             ancestor = v.superview
         }
+        root.layoutSubtreeIfNeeded()
+        // スクロールが落ち着いてから、そのときの位置を押す
+        RunLoop.current.run(until: Date().addingTimeInterval(0.4))
         root.layoutSubtreeIfNeeded()
         let p = card.convert(NSPoint(x: card.bounds.midX, y: card.bounds.midY), to: nil)
         // アプリのイベントの流れに乗せる（本物のクリックと同じく、押した層・離した層が決まる）
@@ -904,6 +917,7 @@ extension SelfTest {
                     check("layers: E replaced R on layer 7", model.isRunning(e) && !model.isRunning(r))
                 }
                 _ = clickCard(q)
+                shoot("layers-q")
             case 5:
                 if Prefs.layerPreviewMode {
                     model.take(smooth: true)
