@@ -89,8 +89,8 @@ public sealed class OutputButtons : StackPanel
     private void Set(Button b, OutputKind kind, string label, Brush onColor)
     {
         var active = model.Feed.Active.Where(o => o.Spec.Kind == kind).ToList();
-        var running = active.Where(o => o.Status == FFmpegProcessOutput.State.Running).ToList();
-        var failed = active.Any(o => o.Status == FFmpegProcessOutput.State.Failed);
+        var running = active.Where(o => o.Status == LibavOutput.State.Running).ToList();
+        var failed = active.Any(o => o.Status == LibavOutput.State.Failed);
         if (running.Count > 0)
         {
             var t = DateTime.Now - running.Min(o => o.StartedAt);
@@ -133,16 +133,16 @@ public sealed class OutputStatusList : StackPanel
         {
             var color = o.Status switch
             {
-                FFmpegProcessOutput.State.Running => o.Spec.Kind == OutputKind.Record ? Theme.Danger : Theme.Live,
-                FFmpegProcessOutput.State.Failed => Theme.Warning,
+                LibavOutput.State.Running => o.Spec.Kind == OutputKind.Record ? Theme.Danger : Theme.Live,
+                LibavOutput.State.Failed => Theme.Warning,
                 _ => Theme.Secondary,
             };
             var t = DateTime.Now - o.StartedAt;
             var state = o.Status switch
             {
-                FFmpegProcessOutput.State.Running => $"{(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00} · {o.BitrateKbps:0} kbps · {o.EncodeFps:0} fps" + (o.DroppedFrames > 0 ? $" · 落ち {o.DroppedFrames}" : ""),
-                FFmpegProcessOutput.State.Stopping => "書き終えています…",
-                FFmpegProcessOutput.State.Failed => "止まりました",
+                LibavOutput.State.Running => $"{(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00} · {o.BitrateKbps:0} kbps · {o.EncodeFps:0} fps" + (o.DroppedFrames > 0 ? $" · 落ち {o.DroppedFrames}" : "") + (o.VideoEncoderName.Length > 0 ? $" · {EncoderNames.Label(o.VideoEncoderName)}" : ""),
+                LibavOutput.State.Stopping => "書き終えています…",
+                LibavOutput.State.Failed => "止まりました",
                 _ => o.Status.ToString(),
             };
             var row = new StackPanel { Margin = new Thickness(0, 3, 0, 3) };
@@ -169,6 +169,22 @@ public sealed class OutputStatusList : StackPanel
             Children.Add(row);
         }
     }
+}
+
+/// <summary>映像エンコーダーの名前を分かりやすく</summary>
+internal static class EncoderNames
+{
+    public static string Label(string name) => name switch
+    {
+        _ when name.EndsWith("_qsv") => "Intel Quick Sync",
+        _ when name.EndsWith("_nvenc") => "NVIDIA",
+        _ when name.EndsWith("_amf") => "AMD",
+        _ when name.EndsWith("_mf") => "Media Foundation",
+        "libx264" => "x264",
+        "libx265" => "x265",
+        "prores_ks" => "ProRes",
+        _ => name,
+    };
 }
 
 /// <summary>設定の「録画・配信」タブ：出力の大きさ・コマ数と、出力の一覧（いくつでも）</summary>

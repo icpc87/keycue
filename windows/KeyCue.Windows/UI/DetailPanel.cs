@@ -33,7 +33,8 @@ public sealed class DetailPanel : Border
         Background = Theme.Panel;
         CornerRadius = new CornerRadius(8);
         Padding = new Thickness(10);
-        MinHeight = 230;
+        // 選んだキーで高さが変わると上のキーボードの図がずれて押し間違えるので、高さをそろえる
+        MinHeight = 300;
         model.SelectionChanged += Rebuild;
         model.AssignmentsChanged += Rebuild;
         model.MediaChanged += Rebuild;

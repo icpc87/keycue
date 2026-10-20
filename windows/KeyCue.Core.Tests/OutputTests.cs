@@ -210,3 +210,133 @@ public class OutputProcessTests
         Assert.Contains("codec_name=aac", info);
     }
 }
+
+/// <summary>アプリの中でエンコードする録画・配信（Windows 版が使う）。Mac では Homebrew の FFmpeg ライブラリで確かめる</summary>
+public class LibavOutputTests
+{
+    private static bool Available => File.Exists("/opt/homebrew/lib/libavcodec.62.dylib") || OperatingSystem.IsWindows();
+
+    private static string Probe(string file)
+    {
+        var psi = new ProcessStartInfo("/opt/homebrew/bin/ffprobe") { RedirectStandardOutput = true, UseShellExecute = false };
+        foreach (var a in new[] { "-v", "error", "-show_entries", "stream=codec_name,codec_type,width,height,channels,nb_frames,color_space:format=duration", "-of", "compact", file }) psi.ArgumentList.Add(a);
+        using var p = Process.Start(psi)!;
+        var o = p.StandardOutput.ReadToEnd();
+        p.WaitForExit();
+        return o;
+    }
+
+    /// <summary>seconds 秒分、動く絵と 440Hz の音を流し込む（音は 20ms ずつ、映像は 30 コマ／秒）</summary>
+    private static void Feed(LibavOutput o, int w, int h, double seconds, int channels, bool video = true)
+    {
+        var frame = new byte[w * h * 4];
+        var sw = Stopwatch.StartNew();
+        var sample = 0L;
+        const int rate = 48000;
+        var nextFrame = 0.0;
+        while (sw.Elapsed.TotalSeconds < seconds)
+        {
+            const int frames = 960;
+            var block = new float[frames * channels];
+            for (var i = 0; i < frames; i++, sample++)
+                for (var c = 0; c < channels; c++) block[i * channels + c] = (float)(0.3 * Math.Sin(2 * Math.PI * 440 * sample / rate));
+            o.PushAudio(block, frames);
+            if (video && sw.Elapsed.TotalSeconds >= nextFrame)
+            {
+                nextFrame += 1.0 / 30;
+                var x = (int)(sw.Elapsed.TotalSeconds / seconds * w) % w;
+                Array.Clear(frame);
+                for (var y = 0; y < h; y++) { var i = (y * w + x) * 4; frame[i + 1] = 255; frame[i + 3] = 255; }
+                o.PushFrame(frame, sw.Elapsed.TotalSeconds);
+            }
+            Thread.Sleep(20);
+        }
+    }
+
+    [Theory]
+    [InlineData("h264", "mp4", "auto", "h264")]
+    [InlineData("h264", "mp4", "x264", "h264")]
+    [InlineData("hevc", "mkv", "x265", "hevc")]
+    [InlineData("prores", "mov", "auto", "prores")]
+    public void RecordsFile(string codec, string container, string encoder, string expected)
+    {
+        if (!Available) return;
+        var dir = Path.Combine(Path.GetTempPath(), "kc-libav-" + Guid.NewGuid().ToString("N"));
+        var spec = new OutputSpec { Name = "test", Folder = dir, Container = container, VideoCodec = codec, Encoder = encoder, VideoBitrateKbps = 2000, Preset = "ultrafast" };
+        var path = spec.RecordingPath(DateTime.Now);
+        using var o = new LibavOutput(spec, path, 320, 180, 30, 48000, FFmpegArgs.Platform.Windows);
+        o.Start();
+        Feed(o, 320, 180, 2.0, 2);
+        o.Stop();
+        Assert.True(o.Status == LibavOutput.State.Stopped, o.Error ?? "");
+        var info = Probe(path);
+        Assert.Contains($"codec_name={expected}", info);
+        Assert.Contains("codec_type=audio", info);
+        var duration = double.Parse(info.Split("duration=")[1].Trim().Split('\n')[0], System.Globalization.CultureInfo.InvariantCulture);
+        // 最初から書けるので、ほぼ 2 秒
+        Assert.True(duration is >= 1.8 and <= 2.3, info);
+        if (codec != "prores") Assert.Contains("color_space=bt709", info);
+    }
+
+    [Fact]
+    public void FullHdKeepsUpInRealTime()
+    {
+        if (!Available) return;
+        var dir = Path.Combine(Path.GetTempPath(), "kc-libav-" + Guid.NewGuid().ToString("N"));
+        var spec = new OutputSpec { Name = "hd", Folder = dir, Container = "mp4", VideoCodec = "h264", Encoder = "x264", VideoBitrateKbps = 8000, Preset = "veryfast" };
+        var path = spec.RecordingPath(DateTime.Now);
+        using var o = new LibavOutput(spec, path, 1920, 1080, 30, 48000, FFmpegArgs.Platform.Windows);
+        o.Start();
+        Feed(o, 1920, 1080, 4.0, 2);
+        var sw = Stopwatch.StartNew();
+        o.Stop();
+        Assert.True(o.Status == LibavOutput.State.Stopped, o.Error ?? "");
+        Assert.True(sw.Elapsed.TotalSeconds < 5, $"止めるのに {sw.Elapsed.TotalSeconds:0.0} 秒");
+        var info = Probe(path);
+        Assert.Contains("width=1920", info);
+        var frames = int.Parse(info.Split("nb_frames=")[1].Split('|', '\n')[0]);
+        Assert.True(frames >= 110, $"コマ {frames}（落ち {o.DroppedFrames}）\n{info}");
+    }
+
+    /// <summary>映像が来なくても（音だけでも）止まらずに書き終える</summary>
+    [Fact]
+    public void AudioOnlyDoesNotHang()
+    {
+        if (!Available) return;
+        var dir = Path.Combine(Path.GetTempPath(), "kc-libav-" + Guid.NewGuid().ToString("N"));
+        var spec = new OutputSpec { Name = "a", Folder = dir, Container = "mkv", VideoCodec = "h264", Encoder = "x264", Preset = "ultrafast" };
+        var path = spec.RecordingPath(DateTime.Now);
+        using var o = new LibavOutput(spec, path, 320, 180, 30, 48000, FFmpegArgs.Platform.Windows);
+        o.Start();
+        Feed(o, 320, 180, 1.0, 2, video: false);
+        var sw = Stopwatch.StartNew();
+        o.Stop();
+        Assert.True(sw.Elapsed.TotalSeconds < 3);
+        Assert.True(o.Status == LibavOutput.State.Stopped, o.Error ?? "");
+    }
+
+    [Fact]
+    public void StreamsOverRtmp()
+    {
+        if (!Available || !File.Exists("/opt/homebrew/bin/ffmpeg")) return;
+        var dir = Path.Combine(Path.GetTempPath(), "kc-libav-rtmp-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var received = Path.Combine(dir, "received.flv");
+        var port = 19900 + Random.Shared.Next(500);
+        var server = new ProcessStartInfo("/opt/homebrew/bin/ffmpeg") { UseShellExecute = false, RedirectStandardError = true };
+        foreach (var a in new[] { "-hide_banner", "-loglevel", "error", "-listen", "1", "-i", $"rtmp://127.0.0.1:{port}/live/testkey", "-c", "copy", "-y", received }) server.ArgumentList.Add(a);
+        using var srv = Process.Start(server)!;
+        Thread.Sleep(800);
+        var spec = new OutputSpec { Kind = OutputKind.Stream, Name = "rtmp", Url = $"rtmp://127.0.0.1:{port}/live", StreamKey = "testkey", VideoBitrateKbps = 1500, Encoder = "x264", Preset = "ultrafast" };
+        using var o = new LibavOutput(spec, spec.StreamTarget(), 320, 180, 30, 48000, FFmpegArgs.Platform.Windows);
+        o.Start();
+        Feed(o, 320, 180, 2.5, 2);
+        o.Stop();
+        srv.WaitForExit(10000);
+        if (!srv.HasExited) srv.Kill();
+        Assert.True(o.Status == LibavOutput.State.Stopped, o.Error ?? "");
+        var info = Probe(received);
+        Assert.Contains("codec_name=h264", info);
+        Assert.Contains("codec_name=aac", info);
+    }
+}

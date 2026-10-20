@@ -34,7 +34,7 @@ public sealed class MonitorsBar : Grid
         // 列：プレビュー｜つまみ｜ライブへ｜つまみ｜ライブ。画面の列は大きさの比で分け、入りきらなければ 16:9 のまま縮む
         ColumnDefinitions.Add(new ColumnDefinition());
         ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(170) });
+        ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
         ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         ColumnDefinitions.Add(new ColumnDefinition());
         RowDefinitions.Add(new RowDefinition());
@@ -193,7 +193,7 @@ public sealed class MonitorsBar : Grid
         programPanel.Visibility = showProgram ? Visibility.Visible : Visibility.Collapsed;
         previewGrip.Visibility = previewPanel.Visibility;
         programGrip.Visibility = programPanel.Visibility;
-        ColumnDefinitions[2].Width = showPreview ? new GridLength(170) : new GridLength(0);
+        ColumnDefinitions[2].Width = showPreview ? new GridLength(220) : new GridLength(0);
         ApplySizes();
         take.IsEnabled = model.HasPendingPreview;
 

@@ -344,6 +344,20 @@ public abstract class CardViewBase : DockPanel
         if (key is "thumbSize" or "layerReplace" or "layerMonitors") QueueRebuild();
     }
 
+    private ScrollViewer? mainScroll;
+    private double savedOffset;
+
+    /// <summary>一覧のスクロール。作り直しても前の位置に戻す（クリックのたびに上まで戻らないように）</summary>
+    protected ScrollViewer MainScroll(UIElement content)
+    {
+        if (mainScroll != null) savedOffset = mainScroll.VerticalOffset;
+        var s = new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Focusable = false };
+        var offset = savedOffset;
+        s.Loaded += (_, _) => s.Dispatcher.BeginInvoke(() => s.ScrollToVerticalOffset(offset), System.Windows.Threading.DispatcherPriority.Loaded);
+        mainScroll = s;
+        return s;
+    }
+
     protected void QueueRebuild()
     {
         if (rebuildQueued) return;
@@ -431,7 +445,7 @@ public sealed class GridCardsView : CardViewBase
         }
         var wrap = new WrapPanel { Margin = new Thickness(8) };
         foreach (var code in codes) wrap.Children.Add(Card(code, size, false));
-        var scroll = new ScrollViewer { Content = wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Focusable = false };
+        var scroll = MainScroll(wrap);
         var border = new Border { Background = Theme.PanelDark, CornerRadius = new CornerRadius(8), Child = scroll, AllowDrop = true };
         border.Drop += (_, e) => { if (!e.Handled) DropOnFreeKey(e); };
         Children.Add(border);
@@ -484,7 +498,7 @@ public sealed class LayerCardsView : CardViewBase
         {
             Background = Theme.PanelDark,
             CornerRadius = new CornerRadius(8),
-            Child = new ScrollViewer { Content = rows, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Focusable = false },
+            Child = MainScroll(rows),
         });
     }
 

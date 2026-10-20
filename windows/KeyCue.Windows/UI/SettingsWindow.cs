@@ -21,8 +21,11 @@ public sealed class SettingsWindow : Window
         this.model = model;
         this.main = main;
         Title = $"設定 — KeyCue #{model.InstanceNumber}";
-        Width = 660;
-        Height = 600;
+        // 録画・配信の欄など、横に長い行が切れないように広めに
+        Width = 900;
+        Height = 720;
+        MinWidth = 640;
+        MinHeight = 480;
         FontFamily = Theme.Font;
         Background = Theme.Background;
         Foreground = Theme.Text;
@@ -34,6 +37,17 @@ public sealed class SettingsWindow : Window
         tabs.Items.Add(new TabItem { Header = "音" });
         tabs.Items.Add(new TabItem { Header = "一般" });
         tabs.Items.Add(new TabItem { Header = "録画・配信", Content = Scroll(new OutputsTab(model)) });
+        // 選んでいるタブを太字・色付きに（見分けやすく）
+        tabs.SelectionChanged += (_, e) =>
+        {
+            if (e.Source != tabs) return;
+            foreach (TabItem t in tabs.Items)
+            {
+                var on = t.IsSelected;
+                t.FontWeight = on ? FontWeights.Bold : FontWeights.Normal;
+                if (on) t.Foreground = Theme.Accent; else t.ClearValue(Control.ForegroundProperty);
+            }
+        };
         Build();
         SourceInitialized += (_, _) => Native.UseDarkTitleBar(new WindowInteropHelper(this).Handle);
         model.Video.Changed += BuildVideoTabs;
@@ -80,6 +94,7 @@ public sealed class SettingsWindow : Window
     {
         Content = new Border { Padding = new Thickness(16), Child = content },
         VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+        HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
         Focusable = false,
     };
 

@@ -10,7 +10,7 @@ public sealed class ProgramFeed
 {
     private readonly AppModel model;
     private readonly Dispatcher dispatcher;
-    private readonly List<FFmpegProcessOutput> outputs = new();
+    private readonly List<LibavOutput> outputs = new();
     private readonly object gate = new();
     private Thread? thread;
     private volatile bool running;
@@ -46,12 +46,12 @@ public sealed class ProgramFeed
 
     public static string FFmpegPath => Path.Combine(AppContext.BaseDirectory, "ffmpeg", "ffmpeg.exe");
 
-    public IReadOnlyList<FFmpegProcessOutput> Active
+    public IReadOnlyList<LibavOutput> Active
     {
         get { lock (gate) return outputs.ToList(); }
     }
 
-    public bool IsActive(OutputKind kind) => Active.Any(o => o.Spec.Kind == kind && o.Status is FFmpegProcessOutput.State.Running or FFmpegProcessOutput.State.Starting);
+    public bool IsActive(OutputKind kind) => Active.Any(o => o.Spec.Kind == kind && o.Status is LibavOutput.State.Running or LibavOutput.State.Starting);
 
     // ---- 出力の設定（全インスタンス共通） ----
 
@@ -104,10 +104,9 @@ public sealed class ProgramFeed
 
     public void Start(OutputSpec spec)
     {
-        if (!File.Exists(FFmpegPath)) throw new FileNotFoundException("ffmpeg.exe が見つかりません（KeyCue を入れ直してください）");
         if (spec.Kind == OutputKind.Stream && spec.Url.Length == 0) throw new InvalidOperationException("配信先の URL を入れてください");
         var target = spec.Kind == OutputKind.Record ? spec.RecordingPath(DateTime.Now) : spec.StreamTarget();
-        var o = new FFmpegProcessOutput(FFmpegPath, spec, target, Width, Height, Fps, (int)model.Audio.SampleRate, FFmpegArgs.Platform.Windows);
+        var o = new LibavOutput(spec, target, Width, Height, Fps, (int)model.Audio.SampleRate, FFmpegArgs.Platform.Windows);
         o.Changed += () => dispatcher.BeginInvoke(() => Changed?.Invoke());
         o.Start();
         lock (gate) outputs.Add(o);
@@ -120,7 +119,7 @@ public sealed class ProgramFeed
         foreach (var o in Active.Where(o => o.Spec.Kind == kind)) Stop(o);
     }
 
-    public void Stop(FFmpegProcessOutput o)
+    public void Stop(LibavOutput o)
     {
         // 書き終えるまで待つので、画面を止めないよう別のスレッドで
         Task.Run(() =>
@@ -146,7 +145,7 @@ public sealed class ProgramFeed
     /// <summary>失敗して止まった出力を一覧から外す</summary>
     public void ClearFailed()
     {
-        lock (gate) outputs.RemoveAll(o => o.Status is FFmpegProcessOutput.State.Failed or FFmpegProcessOutput.State.Stopped);
+        lock (gate) outputs.RemoveAll(o => o.Status is LibavOutput.State.Failed or LibavOutput.State.Stopped);
         StopIfIdle();
         Changed?.Invoke();
     }
