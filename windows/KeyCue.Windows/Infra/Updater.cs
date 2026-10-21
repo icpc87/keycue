@@ -174,6 +174,8 @@ public sealed class Updater
         try
         {
             UpdateFiles.CopyTree(newDir, appDir);
+            // 「設定 › アプリ」に出る版も、入れ替えたときに新しく（この KeyCue.exe が新しい版）
+            SyncInstalledVersion(appDir);
         }
         catch (Exception e)
         {
@@ -204,13 +206,13 @@ public sealed class Updater
     }
 
     /// <summary>Windows の「設定 › アプリ」に出る版を、いま動いている版に合わせる（アプリの中で更新したときはインストーラーを通らないので）</summary>
-    public static void SyncInstalledVersion()
+    public static void SyncInstalledVersion(string? appDir = null)
     {
         try
         {
             using var k = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\KeyCue", true);
             if (k?.GetValue("InstallLocation") is not string location) return;
-            var appDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+            appDir = (appDir ?? AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar);
             if (!string.Equals(Path.GetFullPath(location).TrimEnd(Path.DirectorySeparatorChar), appDir, StringComparison.OrdinalIgnoreCase)) return;
             if (k.GetValue("DisplayVersion") as string != CurrentVersion) k.SetValue("DisplayVersion", CurrentVersion);
         }

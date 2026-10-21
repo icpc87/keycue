@@ -105,6 +105,21 @@ public static class Program
         app.Run();
         instanceMutex?.Dispose();
         // 画面を閉じたら必ず終わる（片付けのあとに残った処理があっても、窓のないまま CPU を使い続けないように）
+        ExitNow();
+    }
+
+    /// <summary>すぐにプロセスを終える。片付け（録画を書き終える・設定の保存）は済ませてから呼ぶ。
+    /// Environment.Exit は Windows の部品の終了処理を待つため、窓が消えてから 20 秒ほど残ることがあった</summary>
+    public static void ExitNow()
+    {
+        try
+        {
+            Console.Out.Flush();
+        }
+        catch
+        {
+        }
+        System.Diagnostics.Process.GetCurrentProcess().Kill();
         Environment.Exit(0);
     }
 

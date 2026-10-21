@@ -285,6 +285,7 @@ public sealed class MainWindow : Window
         Close();
     }
     private bool closingForUpdate;
+    private bool closeConfirmed;
 
     public bool ConfirmDiscard()
     {
@@ -318,20 +319,25 @@ public sealed class MainWindow : Window
     {
         if (OwnedWindows.OfType<StartWindow>().Any()) return;
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        // 本体の操作を止めない（はじめの画面を出したままでも、本体の × で閉じられるように）。本体を閉じると一緒に閉じる
         var w = new StartWindow(this);
-        w.ShowDialog();
-        if (w.ShowOpenDialog) OpenDocument();
-        else if (w.OpenPath is { } path)
+        w.Closed += (_, _) =>
         {
-            try
+            if (!IsVisible) return;
+            if (w.ShowOpenDialog) OpenDocument();
+            else if (w.OpenPath is { } path)
             {
-                Model.Open(path);
+                try
+                {
+                    Model.Open(path);
+                }
+                catch (Exception e)
+                {
+                    Dialogs.Info("キーマップを開けません", e.Message);
+                }
             }
-            catch (Exception e)
-            {
-                Dialogs.Info("キーマップを開けません", e.Message);
-            }
-        }
+        };
+        w.Show();
     }
 
     private void OpenDocument()
@@ -382,9 +388,17 @@ public sealed class MainWindow : Window
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
-        if (!ConfirmDiscard())
+        // 未保存のときは、いったん閉じるのをやめ、閉じる処理の外で「保存しますか？」を出してから閉じ直す
+        // （× ボタンから閉じる途中で確認の窓を出すと、出ないまま閉じられないことがあった）
+        if (Model.IsDirty && !closingForUpdate && !closeConfirmed)
         {
             e.Cancel = true;
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (!ConfirmDiscard()) return;
+                closeConfirmed = true;
+                Close();
+            });
             return;
         }
         Prefs.Set($"mainWindow.{Model.InstanceNumber}", new Rect(Left, Top, Width, Height).ToString(System.Globalization.CultureInfo.InvariantCulture));
@@ -392,7 +406,7 @@ public sealed class MainWindow : Window
         new Thread(() =>
         {
             Thread.Sleep(10000);
-            Environment.Exit(0);
+            Program.ExitNow();
         }) { IsBackground = true, Name = "KeyCue.ExitWatchdog" }.Start();
         if (hookHandle != IntPtr.Zero) Native.UnhookWindowsHookEx(hookHandle);
         Model.Shutdown();
