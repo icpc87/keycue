@@ -221,7 +221,7 @@ public class LibavOutputTests
     private static string Probe(string file)
     {
         var psi = new ProcessStartInfo("/opt/homebrew/bin/ffprobe") { RedirectStandardOutput = true, UseShellExecute = false };
-        foreach (var a in new[] { "-v", "error", "-show_entries", "stream=codec_name,codec_type,width,height,channels,nb_frames,color_space:format=duration", "-of", "compact", file }) psi.ArgumentList.Add(a);
+        foreach (var a in new[] { "-v", "error", "-show_entries", "stream=codec_name,codec_type,width,height,channels,nb_read_packets,color_space:format=duration", "-count_packets", "-of", "compact", file }) psi.ArgumentList.Add(a);
         using var p = Process.Start(psi)!;
         var o = p.StandardOutput.ReadToEnd();
         p.WaitForExit();
@@ -296,8 +296,39 @@ public class LibavOutputTests
         Assert.True(sw.Elapsed.TotalSeconds < 5, $"止めるのに {sw.Elapsed.TotalSeconds:0.0} 秒");
         var info = Probe(path);
         Assert.Contains("width=1920", info);
-        var frames = int.Parse(info.Split("nb_frames=")[1].Split('|', '\n')[0]);
-        Assert.True(frames >= 110, $"コマ {frames}（落ち {o.DroppedFrames}）\n{info}");
+        var frames = int.Parse(info.Split("nb_read_packets=")[1].Split('|', '\n')[0]);
+        // コマは音の長さに合わせて出る。録れた長さの 95% 以上のコマがあれば、遅れずにエンコードできている
+        var duration = double.Parse(info.Split("duration=")[1].Trim().Split('\n')[0], System.Globalization.CultureInfo.InvariantCulture);
+        Assert.True(duration >= 3.3 && frames >= duration * 30 * 0.95, $"コマ {frames}（落ち {o.DroppedFrames}）\n{info}");
+    }
+
+    /// <summary>録画の途中で KeyCue が終わっても（終わりの書き込みがなくても）、そこまでのファイルが再生できる</summary>
+    [Theory]
+    [InlineData("h264", "mp4", "x264", "h264")]
+    [InlineData("prores", "mov", "auto", "prores")]
+    public void UnfinishedRecordingStillPlays(string codec, string container, string encoder, string expected)
+    {
+        if (!Available) return;
+        var dir = Path.Combine(Path.GetTempPath(), "kc-libav-" + Guid.NewGuid().ToString("N"));
+        var spec = new OutputSpec { Name = "crash", Folder = dir, Container = container, VideoCodec = codec, Encoder = encoder, VideoBitrateKbps = 2000, Preset = "ultrafast" };
+        var path = spec.RecordingPath(DateTime.Now);
+        using var o = new LibavOutput(spec, path, 320, 180, 30, 48000, FFmpegArgs.Platform.Windows);
+        o.Start();
+        Feed(o, 320, 180, 5.0, 2);
+        // 録画中のファイルをそのまま写す（突然終わったときに残るもの）
+        var copy = Path.Combine(dir, "unfinished." + container);
+        using (var src = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        using (var dst = File.Create(copy)) src.CopyTo(dst);
+        o.Stop();
+        var info = Probe(copy);
+        Assert.Contains($"codec_name={expected}", info);
+        Assert.Contains("codec_type=audio", info);
+        var duration = double.Parse(info.Split("duration=")[1].Trim().Split('\n')[0], System.Globalization.CultureInfo.InvariantCulture);
+        Assert.True(duration >= 2.5, info);
+        // ふつうに止めたものは最後まで
+        var full = Probe(path);
+        var fullDuration = double.Parse(full.Split("duration=")[1].Trim().Split('\n')[0], System.Globalization.CultureInfo.InvariantCulture);
+        Assert.True(fullDuration is >= 4.3 and <= 5.4, full);
     }
 
     /// <summary>映像が来なくても（音だけでも）止まらずに書き終える</summary>

@@ -294,7 +294,16 @@ public sealed class MainWindow : Window
         var path = Model.DocumentPath;
         if (askName || path == null)
         {
-            var d = new SaveFileDialog { Filter = "KeyCue キーマップ|*.keycue", FileName = Model.DocumentName, Title = "キーマップを保存" };
+            // 名前の欄には拡張子を付けない（付けると、拡張子を隠している PC では名前の一部しか選ばれず、打った名前が後ろに付け足される）
+            var d = new SaveFileDialog
+            {
+                Filter = "KeyCue キーマップ|*.keycue",
+                FileName = System.IO.Path.GetFileNameWithoutExtension(Model.DocumentName),
+                DefaultExt = ".keycue",
+                AddExtension = true,
+                Title = "キーマップを保存",
+            };
+            if (path != null) d.InitialDirectory = System.IO.Path.GetDirectoryName(path);
             if (d.ShowDialog(this) != true) return false;
             path = d.FileName;
         }

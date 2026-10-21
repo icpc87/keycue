@@ -173,8 +173,10 @@ public sealed class Sidebar : DockPanel
         }
         else
         {
-            // 選んでいるキー（なければ鳴っているキー）の素材の ch
-            var code = model.SelectedKey is { } s && model.Assignments.ContainsKey(s) ? s : model.Values.SourceMeters.Keys.FirstOrDefault();
+            // 選んでいるキー（空きなら、いちばん新しく鳴らしたキー）の素材の ch。
+            // メーターの値は止めたあとも少し残るので、鳴っているかどうかは再生中の一覧で見る
+            var code = model.SelectedKey is { } s && model.Assignments.ContainsKey(s) ? s
+                : model.CueRows.LastOrDefault(r => !r.Stopping)?.Key ?? (ushort)0;
             model.Assignments.TryGetValue(code, out var a);
             var info = a != null ? model.MediaInfoFor(a) : null;
             var channels = info?.SourceChannels ?? 0;

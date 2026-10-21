@@ -103,7 +103,8 @@ struct OutputSpec: Codable, Identifiable, Equatable {
             a += ["-c:a", "aac_at", "-b:a", "\(max(audioBitrateKbps, 32))k"]
         }
         if kind == .record {
-            if container == "mp4" || container == "mov" { a += ["-movflags", "+faststart"] }
+            // 区切りながら書く MP4（キーフレームごと）。途中で止まってもそこまでは再生でき、止めるときに全体を書き直さない
+            if container == "mp4" || container == "mov" { a += ["-movflags", "+frag_keyframe+empty_moov+default_base_moof", "-flush_packets", "1"] }
             a.append(target)
         } else {
             a += ["-f", "flv", "-flvflags", "no_duration_filesize", target]

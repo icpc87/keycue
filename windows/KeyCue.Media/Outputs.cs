@@ -153,7 +153,8 @@ public static class FFmpegArgs
 
         if (s.Kind == OutputKind.Record)
         {
-            if (s.Container is "mp4" or "mov") a.AddRange(new[] { "-movflags", "+faststart" });
+            // 区切りながら書く MP4（途中で止まってもそこまでは再生できる）
+            if (s.Container is "mp4" or "mov") a.AddRange(new[] { "-movflags", "+frag_keyframe+empty_moov+default_base_moof", "-flush_packets", "1" });
             a.Add(target);
         }
         else if (s.IsSrt)

@@ -110,6 +110,7 @@ public sealed class TopBar : DockPanel
     private readonly OutputButtons outputs;
     private bool syncing;
     private bool compact;
+    private ColumnDefinition deviceColumn = null!;
 
     public TopBar(AppModel model, MainWindow window)
     {
@@ -138,26 +139,39 @@ public sealed class TopBar : DockPanel
         DockPanel.SetDock(pageMenu, Dock.Right);
         Children.Add(pageMenu);
 
+        // 左側は表にまとめて残りの場所に置く。足りないときは出力デバイスの欄が縮み、ほかのボタン（「出力を閉じる」など）は切れない
+        var left = new Grid { HorizontalAlignment = HorizontalAlignment.Left };
+        Children.Add(left);
+        void AddLeft(UIElement e, GridLength width)
+        {
+            var c = new ColumnDefinition { Width = width };
+            if (e == device) { c.MaxWidth = 230; deviceColumn = c; }
+            left.ColumnDefinitions.Add(c);
+            Grid.SetColumn(e, left.Children.Count);
+            left.Children.Add(e);
+        }
         var pages = Theme.Button("", () => window.TogglePages(), "プレイリスト（ページ）の表示／非表示（Ctrl+Alt+L）");
         pages.Content = Icons.Make(Icons.Pages, 14);
-        Children.Add(pages);
+        AddLeft(pages, GridLength.Auto);
         device.SelectionChanged += (_, _) =>
         {
             if (syncing || device.SelectedIndex < 0) return;
             model.SetOutputDevice(device.SelectedIndex == 0 ? null : model.Devices[device.SelectedIndex - 1].Id);
         };
-        Children.Add(device);
+        device.Width = double.NaN;
+        device.MinWidth = 60;
+        AddLeft(device, new GridLength(1, GridUnitType.Star));
         var speaker = Icons.Make(Icons.Speaker, 14, Theme.Secondary);
         speaker.Margin = new Thickness(10, 0, 4, 0);
-        Children.Add(speaker);
+        AddLeft(speaker, GridLength.Auto);
         master.ValueChanged += (_, e) => { if (!syncing) model.SetMasterVolume(e.NewValue); };
-        Children.Add(master);
+        AddLeft(master, GridLength.Auto);
         videoMenu = Theme.Button("映像", () => { });
         videoMenu.Margin = new Thickness(14, 0, 6, 0);
         videoMenu.Click += (_, _) => VideoMenu().IsOpen = true;
-        Children.Add(videoMenu);
+        AddLeft(videoMenu, GridLength.Auto);
         videoToggle = Theme.Button("", () => { if (model.Video.IsShowing) model.Video.Hide(); else model.Video.Show(); });
-        Children.Add(videoToggle);
+        AddLeft(videoToggle, GridLength.Auto);
 
         // 狭いときは、左側を縮め、ボタンの文字を短くする
         SizeChanged += (_, _) => ApplyWidth();
@@ -190,7 +204,7 @@ public sealed class TopBar : DockPanel
         var narrow = ActualWidth < 1180;
         if (narrow == compact) return;
         compact = narrow;
-        device.Width = narrow ? 130 : 230;
+        deviceColumn.MaxWidth = narrow ? 130 : 230;
         master.Width = narrow ? 60 : 110;
         pageMenu.MaxWidth = narrow ? 120 : 200;
         outputs.Compact = narrow;

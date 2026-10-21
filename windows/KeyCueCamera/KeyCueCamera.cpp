@@ -53,6 +53,17 @@ struct IKsControlLocal : public IUnknown {
     virtual HRESULT STDMETHODCALLTYPE KsEvent(void* event, ULONG eventLength, void* data, ULONG dataLength, ULONG* bytesReturned) = 0;
 };
 
+// Frame Server がコマの入れ物（共有できるメモリ）を渡してくるための窓口
+static const IID KC_IID_IMFSampleAllocatorControl = {0xda62b958, 0x3a38, 0x4a97, {0xbd, 0x27, 0x14, 0x9c, 0x64, 0x0c, 0x07, 0x71}};
+static const IID KC_IID_IMFVideoSampleAllocator = {0x86cbc910, 0xe533, 0x4751, {0x8e, 0x3b, 0xf1, 0x9b, 0x5b, 0x80, 0x6a, 0x03}};
+static const IID KC_IID_IMF2DBuffer2 = {0x33ae5ea6, 0x4316, 0x436f, {0x8d, 0xdd, 0xd7, 0x3d, 0x22, 0xf8, 0x29, 0xec}};
+enum KC_MFSampleAllocatorUsage { KC_MFSampleAllocatorUsage_UsesProvidedAllocator = 0 };
+
+struct IMFSampleAllocatorControlLocal : public IUnknown {
+    virtual HRESULT STDMETHODCALLTYPE SetDefaultAllocator(DWORD outputStreamId, IUnknown* allocator) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetAllocatorUsage(DWORD outputStreamId, DWORD* inputStreamId, KC_MFSampleAllocatorUsage* usage) = 0;
+};
+
 // mfvirtualcamera.h
 enum KC_MFVirtualCameraType { KC_MFVirtualCameraType_SoftwareCameraSource = 0 };
 enum KC_MFVirtualCameraLifetime { KC_MFVirtualCameraLifetime_Session = 0, KC_MFVirtualCameraLifetime_System = 1 };
@@ -152,13 +163,13 @@ private:
     uint8_t* view_ = nullptr;
 };
 
-// BGRA → NV12（BT.709・リミテッドレンジ）
-static void BgraToNv12(const uint8_t* src, uint8_t* dst, UINT32 w, UINT32 h) {
+// BGRA → NV12（BT.709・リミテッドレンジ）。pitch は 1 行のバイト数（入れ物によっては幅より広い）
+static void BgraToNv12(const uint8_t* src, uint8_t* dst, LONG pitch, UINT32 w, UINT32 h) {
     uint8_t* yPlane = dst;
-    uint8_t* uv = dst + (size_t)w * h;
+    uint8_t* uv = dst + (size_t)pitch * h;
     for (UINT32 y = 0; y < h; y++) {
         const uint8_t* s = src + (size_t)y * w * 4;
-        uint8_t* d = yPlane + (size_t)y * w;
+        uint8_t* d = yPlane + (size_t)y * pitch;
         for (UINT32 x = 0; x < w; x++) {
             int b = s[x * 4], g = s[x * 4 + 1], r = s[x * 4 + 2];
             d[x] = (uint8_t)(16 + ((47 * r + 157 * g + 16 * b + 128) >> 8));
@@ -167,7 +178,7 @@ static void BgraToNv12(const uint8_t* src, uint8_t* dst, UINT32 w, UINT32 h) {
     for (UINT32 y = 0; y < h; y += 2) {
         const uint8_t* s0 = src + (size_t)y * w * 4;
         const uint8_t* s1 = src + (size_t)(y + 1) * w * 4;
-        uint8_t* d = uv + (size_t)(y / 2) * w;
+        uint8_t* d = uv + (size_t)(y / 2) * pitch;
         for (UINT32 x = 0; x < w; x += 2) {
             int b = (s0[x * 4] + s0[x * 4 + 4] + s1[x * 4] + s1[x * 4 + 4]) >> 2;
             int g = (s0[x * 4 + 1] + s0[x * 4 + 5] + s1[x * 4 + 1] + s1[x * 4 + 5]) >> 2;
@@ -239,12 +250,34 @@ public:
 
     IMFAttributes* Attributes() { return attributes_; }
 
+    /// Frame Server が渡す入れ物（なければ自分でメモリを取る）
+    HRESULT SetAllocator(IMFVideoSampleAllocator* allocator) {
+        std::lock_guard<std::mutex> g(lock_);
+        if (!queue_) return MF_E_SHUTDOWN;
+        SafeRelease(allocator_);
+        allocator_ = allocator;
+        if (allocator_) allocator_->AddRef();
+        allocatorReady_ = false;
+        return S_OK;
+    }
+
     HRESULT Start(IMFMediaType* type) {
         std::lock_guard<std::mutex> g(lock_);
         if (!queue_) return MF_E_SHUTDOWN;
+        IMFMediaType* current = type;
+        IMFMediaTypeHandler* handler = nullptr;
+        if (!current && descriptor_ && SUCCEEDED(descriptor_->GetMediaTypeHandler(&handler))) handler->GetCurrentMediaType(&current);
+        else if (current) current->AddRef();
+        SafeRelease(handler);
         GUID subtype = MFVideoFormat_NV12;
-        if (type) type->GetGUID(MF_MT_SUBTYPE, &subtype);
+        if (current) current->GetGUID(MF_MT_SUBTYPE, &subtype);
         nv12_ = subtype == MFVideoFormat_NV12;
+        allocatorReady_ = false;
+        if (allocator_ && current) {
+            allocator_->UninitializeSampleAllocator();
+            allocatorReady_ = SUCCEEDED(allocator_->InitializeSampleAllocator(10, current));
+        }
+        SafeRelease(current);
         if (!frame_) frame_ = new (std::nothrow) uint8_t[kFrameBytes];
         if (!frames_) frames_ = new (std::nothrow) SharedFrames();
         state_ = KC_MF_STREAM_STATE_RUNNING;
@@ -264,6 +297,9 @@ public:
         SafeRelease(queue_);
         SafeRelease(descriptor_);
         SafeRelease(attributes_);
+        if (allocator_) allocator_->UninitializeSampleAllocator();
+        SafeRelease(allocator_);
+        allocatorReady_ = false;
         delete frames_;
         frames_ = nullptr;
         delete[] frame_;
@@ -327,28 +363,50 @@ public:
         std::lock_guard<std::mutex> g(lock_);
         if (!queue_) return MF_E_SHUTDOWN;
         if (state_ != KC_MF_STREAM_STATE_RUNNING) return MF_E_MEDIA_SOURCE_WRONGSTATE;
-        DWORD size = nv12_ ? kWidth * kHeight * 3 / 2 : (DWORD)kFrameBytes;
+        if (!frame_) return E_OUTOFMEMORY;
+        bool fresh = frames_ && frames_->Read(frame_);
+        if (!fresh) {
+            // KeyCue から来ていない：黒（不透明）
+            uint32_t* p = (uint32_t*)frame_;
+            for (size_t i = 0; i < (size_t)kWidth * kHeight; i++) p[i] = 0xFF000000u;
+        }
         IMFSample* sample = nullptr;
         IMFMediaBuffer* buffer = nullptr;
-        HRESULT hr = MFCreateSample(&sample);
-        if (SUCCEEDED(hr)) hr = MFCreateMemoryBuffer(size, &buffer);
-        if (SUCCEEDED(hr)) {
-            BYTE* data = nullptr;
-            hr = buffer->Lock(&data, nullptr, nullptr);
+        HRESULT hr = E_FAIL;
+        if (allocator_ && allocatorReady_ && SUCCEEDED(allocator_->AllocateSample(&sample))) {
+            // Frame Server の入れ物（行の幅が広いこと・下から並ぶことがある）
+            hr = sample->GetBufferByIndex(0, &buffer);
+            IMF2DBuffer2* b2 = nullptr;
+            if (SUCCEEDED(hr)) hr = buffer->QueryInterface(KC_IID_IMF2DBuffer2, (void**)&b2);
             if (SUCCEEDED(hr)) {
-                bool fresh = frame_ && frames_ && frames_->Read(frame_);
-                if (!fresh && frame_) {
-                    // KeyCue から来ていない：黒（不透明）
-                    uint32_t* p = (uint32_t*)frame_;
-                    for (size_t i = 0; i < (size_t)kWidth * kHeight; i++) p[i] = 0xFF000000u;
+                BYTE* line0 = nullptr;
+                BYTE* start = nullptr;
+                LONG pitch = 0;
+                DWORD length = 0;
+                hr = b2->Lock2DSize(MF2DBuffer_LockFlags_Write, &line0, &pitch, &start, &length);
+                if (SUCCEEDED(hr)) {
+                    WriteFrame(line0, pitch);
+                    b2->Unlock2D();
                 }
-                if (frame_) {
-                    if (nv12_) BgraToNv12(frame_, data, kWidth, kHeight);
-                    else memcpy(data, frame_, kFrameBytes);
+            }
+            SafeRelease(b2);
+            if (FAILED(hr)) SafeRelease(sample);
+        }
+        if (!sample) {
+            // 自分でメモリを取る
+            SafeRelease(buffer);
+            DWORD size = nv12_ ? kWidth * kHeight * 3 / 2 : (DWORD)kFrameBytes;
+            hr = MFCreateSample(&sample);
+            if (SUCCEEDED(hr)) hr = MFCreateMemoryBuffer(size, &buffer);
+            if (SUCCEEDED(hr)) {
+                BYTE* data = nullptr;
+                hr = buffer->Lock(&data, nullptr, nullptr);
+                if (SUCCEEDED(hr)) {
+                    WriteFrame(data, nv12_ ? (LONG)kWidth : (LONG)kWidth * 4);
+                    buffer->Unlock();
+                    buffer->SetCurrentLength(size);
+                    hr = sample->AddBuffer(buffer);
                 }
-                buffer->Unlock();
-                buffer->SetCurrentLength(size);
-                hr = sample->AddBuffer(buffer);
             }
         }
         if (SUCCEEDED(hr)) {
@@ -387,12 +445,23 @@ private:
         g_objects--;
     }
 
+    /// frame_（BGRA）を、いま選ばれている形で dst に書く。pitch は 1 行目から次の行までのバイト数
+    void WriteFrame(BYTE* dst, LONG pitch) {
+        if (nv12_) {
+            BgraToNv12(frame_, dst, pitch, kWidth, kHeight);
+            return;
+        }
+        for (UINT32 y = 0; y < kHeight; y++) memcpy(dst + (ptrdiff_t)y * pitch, frame_ + (size_t)y * kWidth * 4, (size_t)kWidth * 4);
+    }
+
     std::atomic<long> refs_{1};
     std::mutex lock_;
     MediaSource* parent_;
     IMFAttributes* attributes_ = nullptr;
     IMFStreamDescriptor* descriptor_ = nullptr;
     IMFMediaEventQueue* queue_ = nullptr;
+    IMFVideoSampleAllocator* allocator_ = nullptr;
+    bool allocatorReady_ = false;
     KC_MF_STREAM_STATE state_ = KC_MF_STREAM_STATE_STOPPED;
     bool nv12_ = true;
     uint8_t* frame_ = nullptr;
@@ -401,13 +470,15 @@ private:
 
 // ---- メディアソース ----
 
-class MediaSource final : public IMFMediaSourceEx, public IMFGetService, public IKsControlLocal {
+class MediaSource final : public IMFMediaSourceEx, public IMFGetService, public IKsControlLocal, public IMFSampleAllocatorControlLocal {
 public:
     MediaSource() { g_objects++; }
 
-    HRESULT Initialize() {
+    /// activateAttributes：Frame Server が IMFActivate に付けた属性（ソースの属性へ写す）
+    HRESULT Initialize(IMFAttributes* activateAttributes) {
         HRESULT hr = MFCreateAttributes(&attributes_, 4);
         if (FAILED(hr)) return hr;
+        if (activateAttributes) activateAttributes->CopyAllItems(attributes_);
         stream_ = new (std::nothrow) MediaStream(this);
         if (!stream_) return E_OUTOFMEMORY;
         hr = stream_->Initialize();
@@ -430,6 +501,8 @@ public:
             *ppv = static_cast<IMFGetService*>(this);
         } else if (riid == KC_IID_IKsControl) {
             *ppv = static_cast<IKsControlLocal*>(this);
+        } else if (riid == KC_IID_IMFSampleAllocatorControl) {
+            *ppv = static_cast<IMFSampleAllocatorControlLocal*>(this);
         } else {
             *ppv = nullptr;
             return E_NOINTERFACE;
@@ -442,6 +515,29 @@ public:
         long r = --refs_;
         if (r == 0) delete this;
         return r;
+    }
+
+    // IMFSampleAllocatorControl（Frame Server の入れ物を使う）
+    STDMETHODIMP SetDefaultAllocator(DWORD id, IUnknown* allocator) override {
+        if (!allocator) return E_POINTER;
+        std::lock_guard<std::mutex> g(lock_);
+        if (!stream_) return MF_E_SHUTDOWN;
+        if (id != 0) return MF_E_INVALIDSTREAMNUMBER;
+        IMFVideoSampleAllocator* a = nullptr;
+        HRESULT hr = allocator->QueryInterface(KC_IID_IMFVideoSampleAllocator, (void**)&a);
+        if (FAILED(hr)) return hr;
+        hr = stream_->SetAllocator(a);
+        a->Release();
+        return hr;
+    }
+    STDMETHODIMP GetAllocatorUsage(DWORD id, DWORD* inputId, KC_MFSampleAllocatorUsage* usage) override {
+        if (!inputId || !usage) return E_POINTER;
+        std::lock_guard<std::mutex> g(lock_);
+        if (!stream_) return MF_E_SHUTDOWN;
+        if (id != 0) return MF_E_INVALIDSTREAMNUMBER;
+        *inputId = id;
+        *usage = KC_MFSampleAllocatorUsage_UsesProvidedAllocator;
+        return S_OK;
     }
 
     // IMFMediaEventGenerator
@@ -602,25 +698,30 @@ public:
         return r;
     }
 
+    // Frame Server は、作ったソースを使い続けたまま ShutdownObject を呼ぶことがある。
+    // そこでソースを止めると、その後の呼び出しがすべて MF_E_SHUTDOWN になる（Windows で「始められません（0xC00D3E85）」）。
+    // Microsoft の見本と同じく、呼ばれるたびに新しいソースを作り、ShutdownObject では止めない（止めるのは使う側の IMFMediaSource::Shutdown）
     STDMETHODIMP ActivateObject(REFIID riid, void** ppv) override {
+        if (!ppv) return E_POINTER;
+        *ppv = nullptr;
         std::lock_guard<std::mutex> g(lock_);
-        if (!source_) {
-            auto* s = new (std::nothrow) MediaSource();
-            if (!s) return E_OUTOFMEMORY;
-            HRESULT hr = s->Initialize();
-            if (FAILED(hr)) { s->Release(); return hr; }
-            source_ = s;
+        auto* s = new (std::nothrow) MediaSource();
+        if (!s) return E_OUTOFMEMORY;
+        HRESULT hr = s->Initialize(attributes_);
+        if (SUCCEEDED(hr)) hr = s->QueryInterface(riid, ppv);
+        if (FAILED(hr)) {
+            s->Shutdown();
+            s->Release();
+            return hr;
         }
-        return source_->QueryInterface(riid, ppv);
-    }
-    STDMETHODIMP ShutdownObject() override {
-        std::lock_guard<std::mutex> g(lock_);
-        if (source_) { source_->Shutdown(); source_->Release(); source_ = nullptr; }
+        SafeRelease(source_);
+        source_ = s;
         return S_OK;
     }
+    STDMETHODIMP ShutdownObject() override { return S_OK; }
     STDMETHODIMP DetachObject() override {
         std::lock_guard<std::mutex> g(lock_);
-        if (source_) { source_->Release(); source_ = nullptr; }
+        SafeRelease(source_);
         return S_OK;
     }
 
@@ -658,7 +759,7 @@ public:
 
 private:
     ~Activator() {
-        if (source_) { source_->Shutdown(); source_->Release(); }
+        SafeRelease(source_);
         SafeRelease(attributes_);
         g_objects--;
     }

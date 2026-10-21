@@ -114,7 +114,11 @@ public sealed unsafe class LibavOutput : IDisposable
             fmt->pb = pb;
         }
         AVDictionary* opts = null;
-        if (Spec.Kind == OutputKind.Record && Spec.Container is "mp4" or "mov") ffmpeg.av_dict_set(&opts, "movflags", "+faststart", 0);
+        // 区切りながら書く MP4（キーフレームごと）。KeyCue や PC が途中で止まっても、そこまでは再生できる。
+        // 終わりに全体を書き直す faststart と違って、長い録画でも止めるのに時間がかからない
+        if (Spec.Kind == OutputKind.Record && Spec.Container is "mp4" or "mov") ffmpeg.av_dict_set(&opts, "movflags", "+frag_keyframe+empty_moov+default_base_moof", 0);
+        // 区切りを書いたらすぐファイルへ（小さな録画でも、書き込み待ちのまま残らないように）
+        if (Spec.Kind == OutputKind.Record) ffmpeg.av_dict_set(&opts, "flush_packets", "1", 0);
         if (formatName == "flv") ffmpeg.av_dict_set(&opts, "flvflags", "no_duration_filesize", 0);
         var ret = ffmpeg.avformat_write_header(fmt, &opts);
         ffmpeg.av_dict_free(&opts);
