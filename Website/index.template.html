@@ -91,6 +91,9 @@
   .feature.rev > a { order: 2; }
   .feature a { display: block; cursor: zoom-in; }
   .feature img { width: 100%; border-radius: 12px; border: 1px solid var(--line); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); }
+  .shot-os { display: inline-flex; gap: 4px; padding: 4px; margin-top: 4px; border: 1px solid var(--line); border-radius: 999px; }
+  .shot-os button { font: inherit; font-size: 14px; color: var(--muted); background: none; border: 0; border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+  .shot-os button[aria-pressed="true"] { color: var(--text); background: var(--line); font-weight: 600; }
   ul.check { padding: 0; list-style: none; margin: 0; }
   ul.check li { padding-left: 28px; position: relative; margin: 8px 0; }
   ul.check li::before { content: "✓"; position: absolute; left: 0; color: var(--accent2); font-weight: 700; }
@@ -158,7 +161,7 @@
     <div class="meta dl-meta">macOS 14 以降 · Apple Silicon / Intel · 無料</div>
   </div>
   <div class="shot wrap">
-    <img src="images/screenshot.jpg" alt="KeyCue の画面。キーボードに素材が並び、左にプレイリスト、右に映像モニターと再生中の素材">
+    <img src="images/screenshot.jpg" data-win="images/screenshot-win.jpg" alt="KeyCue の画面。キーボードに素材が並び、左にプレイリスト、右に映像モニターと再生中の素材">
   </div>
 </div>
 
@@ -203,9 +206,10 @@
   <div class="wrap">
     <h2>画面で見る</h2>
     <p class="lead">本番の操作は、キーかクリックだけ。表示は「キーボード」「グリッド」「レイヤー」から選べます（設定 › 一般）。</p>
+    <div class="shot-os" role="group" aria-label="写真の OS"><button type="button" data-shots="mac">Mac の画面</button><button type="button" data-shots="win">Windows の画面</button></div>
 
     <div class="feature">
-      <a href="images/shot-layers.jpg" title="クリックで大きく見る"><img src="images/shot-layers.jpg" alt="レイヤー表示。上にプレビューとライブの画面、下にレイヤーごとの段と素材のカード" loading="lazy"></a>
+      <a href="images/shot-layers.jpg" title="クリックで大きく見る"><img src="images/shot-layers.jpg" data-win="images/shot-win-layers.jpg" alt="レイヤー表示。上にプレビューとライブの画面、下にレイヤーごとの段と素材のカード" loading="lazy"></a>
       <div>
         <h3>レイヤー表示とプレビュー／ライブ</h3>
         <p>Wirecast のように、映像を 9 段のレイヤーに重ねて出します。カードのクリックでプレビューに組み、「ライブへ」でカットかスムーズに切り替え。</p>
@@ -218,7 +222,7 @@
     </div>
 
     <div class="feature rev">
-      <a href="images/shot-output.jpg" title="クリックで大きく見る"><img src="images/shot-output.jpg" alt="映像出力の画面。背景の上に、オープニングのタイトルと名前のテロップが重なっている" loading="lazy"></a>
+      <a href="images/shot-output.jpg" title="クリックで大きく見る"><img src="images/shot-output.jpg" data-win="images/shot-win-output.jpg" alt="映像出力の画面。背景の上に、オープニングのタイトルと名前のテロップが重なっている" loading="lazy"></a>
       <div>
         <h3>映像出力</h3>
         <p>ウィンドウと、つないだディスプレイの全画面に同時に出せます。レイヤーの順に重ねるので、テロップは動画の上に。</p>
@@ -230,7 +234,7 @@
     </div>
 
     <div class="feature">
-      <a href="images/shot-grid.jpg" title="クリックで大きく見る"><img src="images/shot-grid.jpg" alt="グリッド表示。素材がサムネイルのカードで並び、音声は波形で表示される" loading="lazy"></a>
+      <a href="images/shot-grid.jpg" title="クリックで大きく見る"><img src="images/shot-grid.jpg" data-win="images/shot-win-grid.jpg" alt="グリッド表示。素材がサムネイルのカードで並び、音声は波形で表示される" loading="lazy"></a>
       <div>
         <h3>グリッド表示</h3>
         <p>ProPresenter のように、素材をサムネイルで並べて、クリックで出します。音声は波形、スライドは 1 枚目の絵、流れているものはオレンジの枠で分かります。</p>
@@ -251,7 +255,7 @@
     </div>
 
     <div class="feature">
-      <a href="images/shot-settings.jpg" title="クリックで大きく見る"><img src="images/shot-settings.jpg" alt="設定の録画・配信タブ。出力の大きさとコマ数、録画と配信の出力の一覧" loading="lazy"></a>
+      <a href="images/shot-settings.jpg" title="クリックで大きく見る"><img src="images/shot-settings.jpg" data-win="images/shot-win-settings.jpg" alt="設定の録画・配信タブ。出力の大きさとコマ数、録画と配信の出力の一覧" loading="lazy"></a>
       <div>
         <h3>録画・配信の設定</h3>
         <p>出力の大きさ（HD〜4K）とコマ数、録画の保存先・ファイル名・形式、配信先を設定 › 録画・配信 で。オンにしたものを「録画」「配信」ボタンでまとめて始めます。</p>
@@ -292,7 +296,7 @@
       <label class="os">ほかの OS
         <select id="dl-os">
           <option value="mac" data-href="{{DMG}}" data-name="Mac 版" data-size="{{SIZE}}" data-meta="macOS 14 以降 · Apple Silicon / Intel · 無料">Mac（Apple Silicon / Intel）</option>
-          <!--WIN--><option value="win-x64" data-href="{{WIN_X64_SETUP}}" data-name="Windows 版（x64）" data-size="{{WIN_X64_SETUP_SIZE}}" data-meta="Windows 10 / 11（64 ビット）· インストーラー · 無料">Windows（x64・ふつうの PC）</option>
+          <!--WIN--><option value="win-x64" data-href="{{WIN_X64_SETUP}}" data-name="Windows 版（x64）" data-size="{{WIN_X64_SETUP_SIZE}}" data-meta="Windows 10 / 11（64 ビット）· インストーラー · 無料">Windows（x64・Intel / AMD）</option>
           <option value="win-arm64" data-href="{{WIN_ARM64_SETUP}}" data-name="Windows 版（ARM64）" data-size="{{WIN_ARM64_SETUP_SIZE}}" data-meta="Windows 11（ARM64）· インストーラー · 無料">Windows（ARM64・Snapdragon など）</option><!--/WIN-->
         </select>
       </label>
@@ -341,14 +345,28 @@
     document.querySelectorAll('.req[data-os]').forEach(function (r) { r.hidden = (r.getAttribute('data-os') === 'win') !== win; });
   }
   sel.addEventListener('change', function () { apply(sel.value); });
+  // 画面の写真：Windows で見ているときは Windows の写真に（Windows の写真がないものは Mac のまま）
+  function showShots(os) {
+    document.querySelectorAll('img[data-win]').forEach(function (img) {
+      if (!img.hasAttribute('data-mac')) img.setAttribute('data-mac', img.getAttribute('src'));
+      var src = img.getAttribute(os === 'win' ? 'data-win' : 'data-mac');
+      img.setAttribute('src', src);
+      if (img.parentNode.tagName === 'A') img.parentNode.setAttribute('href', src);
+    });
+    document.querySelectorAll('.shot-os button').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-shots') === os ? 'true' : 'false'); });
+  }
+  document.querySelectorAll('.shot-os button').forEach(function (b) {
+    b.addEventListener('click', function () { showShots(b.getAttribute('data-shots')); });
+  });
   var ua = navigator.userAgent, guess = 'mac';
   if (/Windows/i.test(ua)) guess = /ARM64|aarch64/i.test(ua) ? 'win-arm64' : 'win-x64';
   if (location.hash === '#windows' && guess === 'mac') guess = 'win-x64';
   apply(guess);
+  showShots(guess.indexOf('win') === 0 ? 'win' : 'mac');
   // Chrome・Edge は CPU の種類まで教えてくれる（Windows の ARM64 を見分ける）
   if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
     navigator.userAgentData.getHighEntropyValues(['architecture', 'platform']).then(function (v) {
-      if (v.platform === 'Windows') apply(v.architecture === 'arm' ? 'win-arm64' : 'win-x64');
+      if (v.platform === 'Windows') { apply(v.architecture === 'arm' ? 'win-arm64' : 'win-x64'); showShots('win'); }
     }).catch(function () {});
   }
 })();
