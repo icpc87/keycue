@@ -203,6 +203,22 @@ public sealed class Updater
         return code;
     }
 
+    /// <summary>Windows の「設定 › アプリ」に出る版を、いま動いている版に合わせる（アプリの中で更新したときはインストーラーを通らないので）</summary>
+    public static void SyncInstalledVersion()
+    {
+        try
+        {
+            using var k = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\KeyCue", true);
+            if (k?.GetValue("InstallLocation") is not string location) return;
+            var appDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+            if (!string.Equals(Path.GetFullPath(location).TrimEnd(Path.DirectorySeparatorChar), appDir, StringComparison.OrdinalIgnoreCase)) return;
+            if (k.GetValue("DisplayVersion") as string != CurrentVersion) k.SetValue("DisplayVersion", CurrentVersion);
+        }
+        catch
+        {
+        }
+    }
+
     private static void Log(string message)
     {
         try

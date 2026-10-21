@@ -91,6 +91,7 @@ public static class Program
             // あとからエクスプローラーで開いたキーマップを受け取る（開いている KeyCue のうち 1 つが受け取り役）
             DocumentHandoff.Serve(HandoffPipe, path => window.Dispatcher.BeginInvoke(() => window.OpenFromExplorer(path)), CancellationToken.None);
             if (Prefs.OpenVideoOnLaunch) model.Video.Show();
+            Updater.SyncInstalledVersion();
             // 多重起動のときは最初のインスタンスだけが確認する
             if (instance == 1) window.Dispatcher.BeginInvoke(Updater.Shared.CheckOnLaunch, DispatcherPriority.ApplicationIdle);
         }
