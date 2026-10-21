@@ -91,7 +91,8 @@ public static class Program
                 {
                     case "reopen": model.RestoreLastDocument(); break;
                     case "blank": break;
-                    default: window.Dispatcher.BeginInvoke(window.ShowStart, DispatcherPriority.Loaded); break;
+                    // メインの窓が画面に出てから（多重起動の #2 などで、窓より先に出して隠れないように）
+                    default: window.ShowStartWhenShown(); break;
                 }
             }
             // あとからエクスプローラーで開いたキーマップを受け取る（開いている KeyCue のうち 1 つが受け取り役）

@@ -89,6 +89,7 @@ public sealed class MainWindow : Window
         Prefs.Changed += key =>
         {
             if (key == "mainView") SetMainView();
+            if (key is "mainView" or "layerMonitors") model.ViewChanged();
             if (key is "videoFill" or "videoBackground") model.Video.ApplyAppearance();
         };
         model.TitleChanged += UpdateTitle;
@@ -300,9 +301,23 @@ public sealed class MainWindow : Window
         ShowStart();
     }
 
+    /// <summary>起動したとき：メインの窓が描かれてから、はじめの画面を出す</summary>
+    public void ShowStartWhenShown()
+    {
+        void Shown(object? s, EventArgs e)
+        {
+            ContentRendered -= Shown;
+            Dispatcher.BeginInvoke(ShowStart, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        }
+        if (IsLoaded && IsVisible) Dispatcher.BeginInvoke(ShowStart, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        else ContentRendered += Shown;
+    }
+
     /// <summary>はじめの画面（表示を選んで新しく作る・開く）</summary>
     public void ShowStart()
     {
+        if (OwnedWindows.OfType<StartWindow>().Any()) return;
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         var w = new StartWindow(this);
         w.ShowDialog();
         if (w.ShowOpenDialog) OpenDocument();

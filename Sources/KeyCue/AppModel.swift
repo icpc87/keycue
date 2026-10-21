@@ -1673,6 +1673,16 @@ final class AppModel: ObservableObject {
         onTitleChange?()
     }
 
+    /// キーマップに保存してある表示（開いた・保存したときのもの）
+    private var documentView = AppModel.currentView
+    private static var currentView: String { "\(UserDefaults.standard.string(forKey: Prefs.mainViewKey) ?? "keyboard")|\(Prefs.layerMonitors)" }
+
+    /// 表示を切り替えたとき：表示もキーマップに入るので、未保存にする（まだ何も入っていない新しいキーマップは除く）
+    func viewChanged() {
+        guard AppModel.currentView != documentView else { return }
+        if documentURL != nil || pages.contains(where: { !$0.keys.isEmpty }) || !assignments.isEmpty { markDirty() }
+    }
+
     var documentName: String { documentURL?.lastPathComponent ?? "名称未設定.keycue" }
 
     func newDocument() {
@@ -1688,6 +1698,7 @@ final class AppModel: ObservableObject {
         video.resetPrepared()
         applyingDocument = false
         documentURL = nil
+        documentView = AppModel.currentView
         isDirty = false
         UserDefaults.standard.removeObject(forKey: lastDocumentKey)
         onTitleChange?()
@@ -1771,6 +1782,7 @@ final class AppModel: ObservableObject {
             statusMessage = "保存時の出力デバイスが見つからないため、システム既定に出力しています"
         }
         documentURL = url
+        documentView = AppModel.currentView
         isDirty = false
         reloadAll(force: true)
         UserDefaults.standard.set(url.path, forKey: lastDocumentKey)
@@ -1807,6 +1819,7 @@ final class AppModel: ObservableObject {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(doc).write(to: url, options: .atomic)
         documentURL = url
+        documentView = AppModel.currentView
         isDirty = false
         UserDefaults.standard.set(url.path, forKey: lastDocumentKey)
         Prefs.addRecentKeymap(url.path)

@@ -280,4 +280,15 @@ public sealed partial class AppModel
     }
 
     public string DocumentName => DocumentPath != null ? System.IO.Path.GetFileName(DocumentPath) : "名称未設定.keycue";
+
+    /// <summary>キーマップに保存してある表示（開いた・保存したときのもの）</summary>
+    private string documentView = CurrentView;
+    private static string CurrentView => $"{Prefs.MainView}|{Prefs.LayerMonitors}";
+
+    /// <summary>表示を切り替えたとき：表示もキーマップに入るので、未保存にする（まだ何も入っていない新しいキーマップは除く）</summary>
+    public void ViewChanged()
+    {
+        if (CurrentView == documentView) return;
+        if (DocumentPath != null || Pages.Any(p => p.Keys.Count > 0) || Assignments.Count > 0) MarkDirty();
+    }
 }

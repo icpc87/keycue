@@ -4,6 +4,7 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject var model: AppModel
     @AppStorage(Prefs.mainViewKey) private var mainView = "keyboard"
+    @AppStorage(Prefs.layerMonitorsKey) private var layerMonitors = "both"
 
     /// 中央（キーボードと設定）に最低限ほしい幅
     static let mainMinWidth: CGFloat = 700
@@ -54,6 +55,9 @@ struct ContentView: View {
         .background(Color(white: 0.15))
         .preferredColorScheme(.dark)
         .sheet(isPresented: $model.showStartScreen) { StartView(model: model) }
+        // 表示もキーマップに入るので、切り替えたら未保存に
+        .onChange(of: mainView) { model.viewChanged() }
+        .onChange(of: layerMonitors) { model.viewChanged() }
     }
 }
 

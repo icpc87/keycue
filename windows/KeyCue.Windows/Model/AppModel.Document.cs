@@ -23,6 +23,7 @@ public sealed partial class AppModel
         DocumentPath = null;
         IsDirty = false;
         Prefs.Remove(LastDocumentKey);
+        documentView = CurrentView;
         PagesChanged?.Invoke();
         DeckTabsChanged?.Invoke();
         NotifyAssignments();
@@ -74,6 +75,7 @@ public sealed partial class AppModel
         DocumentPath = path;
         IsDirty = false;
         ReloadAll(true);
+        documentView = CurrentView;
         Prefs.Set(LastDocumentKey, path);
         Prefs.AddRecentKeymap(path);
         PagesChanged?.Invoke();
@@ -149,6 +151,7 @@ public sealed partial class AppModel
         var tmp = path + ".tmp";
         File.WriteAllText(tmp, KeymapJson.Write(doc));
         File.Move(tmp, path, true);
+        documentView = CurrentView;
         DocumentPath = path;
         IsDirty = false;
         Prefs.Set(LastDocumentKey, path);

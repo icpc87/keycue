@@ -38,6 +38,13 @@ public sealed class StartWindow : Window
         Background = Theme.Background;
         Foreground = Theme.Text;
         SourceInitialized += (_, _) => Native.UseDarkTitleBar(new WindowInteropHelper(this).Handle);
+        // ほかの KeyCue（#1 など）の後ろに隠れないように、出したら前へ
+        ContentRendered += (_, _) =>
+        {
+            Topmost = true;
+            Activate();
+            Topmost = false;
+        };
 
         // 左：新しく作る
         var left = new StackPanel { Width = 580, Margin = new Thickness(24) };
