@@ -247,7 +247,7 @@ public sealed class SettingsWindow : Window
                 Theme.Button("ホームページ", () => Process.Start(new ProcessStartInfo("https://keycue.ic2.jp/") { UseShellExecute = true })))));
 
         p.Children.Add(Section("起動・ファイル",
-            Theme.Check("起動したら前回のキーマップを開く", Prefs.ReopenLastKeymap, v => Prefs.Set("reopenLastKeymap", v)),
+            Theme.Row(Theme.Label("起動したとき  "), Theme.Choice(new[] { ("start", "はじめの画面（新しく作る・開く）"), ("reopen", "前回のキーマップを開く"), ("blank", "空のキーマップ") }, Prefs.LaunchAction, v => Prefs.Set("launchAction", v), 260)),
             Theme.Row(Theme.Label("スライドから書き出した画像・動画  "), Theme.Button("エクスプローラーで開く", () =>
             {
                 Directory.CreateDirectory(Deck.DeckBuilder.RootDir);

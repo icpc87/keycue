@@ -365,3 +365,20 @@ public class MixerTapTests
         Assert.Equal(-0.25f, got[21], 3);
     }
 }
+
+public class KeymapViewTests
+{
+    /// <summary>表示（mainView・layerMonitors）を Mac 版と同じ名前でキーマップに入れ、古いキーマップ（ないもの）も読める</summary>
+    [Fact]
+    public void MainViewIsStoredWithKeymap()
+    {
+        var json = KeymapJson.Write(new KeymapDocument { MainView = "layers", LayerMonitors = "program" });
+        Assert.Contains("\"mainView\": \"layers\"", json);
+        Assert.Contains("\"layerMonitors\": \"program\"", json);
+        var back = KeymapJson.Read(json);
+        Assert.Equal("layers", back.MainView);
+        Assert.Equal("program", back.LayerMonitors);
+        var old = KeymapJson.Read("{\"format\":\"keycue\",\"version\":1,\"keys\":{}}");
+        Assert.Null(old.MainView);
+    }
+}

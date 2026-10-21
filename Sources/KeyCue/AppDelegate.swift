@@ -59,7 +59,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if SelfTest.folder != nil || ProcessInfo.processInfo.environment["KEYCUE_SELFTEST_KEYS"] != nil || ProcessInfo.processInfo.environment["KEYCUE_SELFTEST_LAYOUT"] != nil || ProcessInfo.processInfo.environment["KEYCUE_SELFTEST_DEMO"] != nil || ProcessInfo.processInfo.environment["KEYCUE_SELFTEST_PERF"] != nil || ProcessInfo.processInfo.environment["KEYCUE_SELFTEST_FADE"] != nil || ProcessInfo.processInfo.environment["KEYCUE_SELFTEST_FIELD"] != nil || ProcessInfo.processInfo.environment["KEYCUE_SELFTEST_THUMBS"] != nil || ProcessInfo.processInfo.environment["KEYCUE_SELFTEST_LAYERS"] != nil || ProcessInfo.processInfo.environment["KEYCUE_SELFTEST_ALPHA"] != nil || ProcessInfo.processInfo.environment["KEYCUE_SELFTEST_RECORD"] != nil || ProcessInfo.processInfo.environment["KEYCUE_SELFTEST_VCAM"] != nil || ProcessInfo.processInfo.environment["KEYCUE_SELFTEST_SHOWCASE"] != nil {
             SelfTest.run(model: model)
         } else {
-            model.restoreLastDocument()
+            // 起動したとき：はじめの画面（新しく作る・開く）／前回のキーマップ／空のまま
+            model.onOpenPanel = { [weak self] in self?.openDocument(nil) }
+            switch Prefs.launchAction {
+            case "reopen": model.restoreLastDocument()
+            case "blank": break
+            default: model.showStartScreen = true
+            }
             if Prefs.openVideoOnLaunch { model.video.show() }
             // 多重起動のときは最初のインスタンスだけが確認する
             if instance == 1 { Updater.shared.checkOnLaunch() }
@@ -229,7 +235,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func handleLocal(_ event: NSEvent) -> Bool {
         if !event.modifierFlags.intersection([.command, .control, .option]).isEmpty { return false }
         // 開く／保存パネルや確認ダイアログの間はそちらへ渡す
-        if NSApp.modalWindow != nil || event.window is NSSavePanel || event.window?.attachedSheet != nil { return false }
+        // はじめの画面などのシートの上では、キーはシートへ
+        if NSApp.modalWindow != nil || event.window is NSSavePanel || event.window?.attachedSheet != nil || event.window?.sheetParent != nil { return false }
         // 自分でクリックした入力欄に入力中ならそちらへ渡す。
         // 画面が切り替わったはずみで macOS が勝手に入力欄へカーソルを移したときは、外してキー操作を優先する
         if let text = event.window?.firstResponder as? NSTextView, text.isEditable {
@@ -291,6 +298,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc private func newDocument(_ sender: Any?) {
         guard confirmDiscard() else { return }
         model.newDocument()
+        model.showStartScreen = true
     }
 
     @objc private func openDocument(_ sender: Any?) {

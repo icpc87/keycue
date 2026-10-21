@@ -258,6 +258,9 @@ public sealed class KeymapDocument
     public List<int>? MutedOutputs { get; set; }
     public List<PageDocument>? Pages { get; set; }
     public int? CurrentPage { get; set; }
+    /// <summary>メイン画面の表示（keyboard / thumbnails / layers）とレイヤー表示の上のモニター。古いキーマップにはない</summary>
+    public string? MainView { get; set; }
+    public string? LayerMonitors { get; set; }
 }
 
 /// <summary>キーマップの JSON（Mac 版と同じ名前・同じ値で読み書きする）</summary>

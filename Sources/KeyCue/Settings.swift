@@ -7,6 +7,9 @@ enum Prefs {
 
     static let keyboardLayoutKey = "pref.keyboardLayout"        // auto / us / jis
     static let reopenLastKeymapKey = "pref.reopenLastKeymap"
+    /// 起動したとき：start（はじめの画面）/ reopen（前回のキーマップ）/ blank（空のまま）
+    static let launchActionKey = "pref.launchAction"
+    static let recentKeymapsKey = "pref.recentKeymaps"
     static let multiDropKey = "pref.multiDrop"                  // ask / list / spread
     static let occupiedDropKey = "pref.occupiedDrop"            // ask / append / replace
     static let preferPowerPointKey = "pref.preferPowerPoint"
@@ -43,6 +46,7 @@ enum Prefs {
     static let factoryDefaults: [String: Any] = [
         keyboardLayoutKey: "auto",
         reopenLastKeymapKey: true,
+        launchActionKey: "start",
         multiDropKey: "ask",
         occupiedDropKey: "ask",
         preferPowerPointKey: true,
@@ -70,6 +74,16 @@ enum Prefs {
 
     static var keyboardLayout: String { d.string(forKey: keyboardLayoutKey) ?? "auto" }
     static var reopenLastKeymap: Bool { d.bool(forKey: reopenLastKeymapKey) }
+    static var launchAction: String { d.string(forKey: launchActionKey) ?? "start" }
+    /// 最近開いた・保存したキーマップ（新しい順・まだあるものだけ）
+    static var recentKeymaps: [String] {
+        (d.stringArray(forKey: recentKeymapsKey) ?? []).filter { FileManager.default.fileExists(atPath: $0) }
+    }
+    static func addRecentKeymap(_ path: String) {
+        var list = (d.stringArray(forKey: recentKeymapsKey) ?? []).filter { $0 != path }
+        list.insert(path, at: 0)
+        d.set(Array(list.prefix(8)), forKey: recentKeymapsKey)
+    }
     static var multiDrop: String { d.string(forKey: multiDropKey) ?? "ask" }
     static var occupiedDrop: String { d.string(forKey: occupiedDropKey) ?? "ask" }
     static var preferPowerPoint: Bool { d.bool(forKey: preferPowerPointKey) }
@@ -305,7 +319,7 @@ private struct GeneralSettings: View {
         default: return "キーボード：キーボードの図に素材を表示します。どの表示でも、キーでの操作は同じです。"
         }
     }
-    @AppStorage(Prefs.reopenLastKeymapKey) private var reopen = true
+    @AppStorage(Prefs.launchActionKey) private var launchAction = "start"
     @AppStorage(Prefs.multiDropKey) private var multiDrop = "ask"
     @AppStorage(Prefs.occupiedDropKey) private var occupiedDrop = "ask"
     @AppStorage(Prefs.preferPowerPointKey) private var preferPowerPoint = true
@@ -371,7 +385,11 @@ private struct GeneralSettings: View {
                 }
             }
             Section("起動・ファイル") {
-                Toggle("起動したら前回のキーマップを開く", isOn: $reopen)
+                Picker("起動したとき", selection: $launchAction) {
+                    Text("はじめの画面（新しく作る・開く）").tag("start")
+                    Text("前回のキーマップを開く").tag("reopen")
+                    Text("空のキーマップ").tag("blank")
+                }
                 HStack {
                     Text("スライドから書き出した画像・動画")
                     Spacer()

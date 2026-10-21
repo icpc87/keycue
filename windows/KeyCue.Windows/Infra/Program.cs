@@ -86,7 +86,13 @@ public static class Program
             }
             else
             {
-                model.RestoreLastDocument();
+                // 起動したとき：はじめの画面（新しく作る・開く）／前回のキーマップ／空のまま
+                switch (Prefs.LaunchAction)
+                {
+                    case "reopen": model.RestoreLastDocument(); break;
+                    case "blank": break;
+                    default: window.Dispatcher.BeginInvoke(window.ShowStart, DispatcherPriority.Loaded); break;
+                }
             }
             // あとからエクスプローラーで開いたキーマップを受け取る（開いている KeyCue のうち 1 つが受け取り役）
             DocumentHandoff.Serve(HandoffPipe, path => window.Dispatcher.BeginInvoke(() => window.OpenFromExplorer(path)), CancellationToken.None);

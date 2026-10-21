@@ -295,7 +295,28 @@ public sealed class MainWindow : Window
 
     private void NewDocument()
     {
-        if (ConfirmDiscard()) Model.NewDocument();
+        if (!ConfirmDiscard()) return;
+        Model.NewDocument();
+        ShowStart();
+    }
+
+    /// <summary>はじめの画面（表示を選んで新しく作る・開く）</summary>
+    public void ShowStart()
+    {
+        var w = new StartWindow(this);
+        w.ShowDialog();
+        if (w.ShowOpenDialog) OpenDocument();
+        else if (w.OpenPath is { } path)
+        {
+            try
+            {
+                Model.Open(path);
+            }
+            catch (Exception e)
+            {
+                Dialogs.Info("キーマップを開けません", e.Message);
+            }
+        }
     }
 
     private void OpenDocument()

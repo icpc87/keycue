@@ -19,6 +19,7 @@ public static class Prefs
     {
         ["keyboardLayout"] = "auto",          // auto / us / jis
         ["reopenLastKeymap"] = true,
+        ["launchAction"] = "start",           // 起動したとき：start（はじめの画面）/ reopen（前回のキーマップ）/ blank（空のまま）
         ["multiDrop"] = "ask",                // ask / list / spread
         ["occupiedDrop"] = "ask",             // ask / append / replace
         ["defaultFadeIn"] = 0.0,
@@ -119,6 +120,31 @@ public static class Prefs
 
     public static string KeyboardLayoutChoice => Get<string>("keyboardLayout");
     public static bool ReopenLastKeymap => Get<bool>("reopenLastKeymap");
+    public static string LaunchAction => Get<string>("launchAction");
+
+    /// <summary>最近開いた・保存したキーマップ（新しい順・まだあるものだけ）</summary>
+    public static List<string> RecentKeymaps
+    {
+        get
+        {
+            lock (gate)
+            {
+                if (Volatile || data["recentKeymaps"] is not JsonArray list) return new();
+                return list.Select(n => n?.GetValue<string>()).OfType<string>().Where(File.Exists).ToList();
+            }
+        }
+    }
+
+    public static void AddRecentKeymap(string path)
+    {
+        lock (gate)
+        {
+            var old = data["recentKeymaps"] is JsonArray a ? a.Select(n => n?.GetValue<string>()).OfType<string>() : Enumerable.Empty<string>();
+            var list = new[] { path }.Concat(old.Where(p => !string.Equals(p, path, StringComparison.OrdinalIgnoreCase))).Take(8);
+            data["recentKeymaps"] = new JsonArray(list.Select(p => (JsonNode)JsonValue.Create(p)!).ToArray());
+            if (!Volatile) Save();
+        }
+    }
     public static string MultiDrop => Get<string>("multiDrop");
     public static string OccupiedDrop => Get<string>("occupiedDrop");
     public static double DefaultFadeIn => Get<double>("defaultFadeIn");

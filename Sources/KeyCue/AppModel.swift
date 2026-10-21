@@ -162,6 +162,9 @@ struct KeymapDocument: Codable {
     /// プレイリスト（キーボードのページ）。古いキーマップは keys だけの 1 ページ
     var pages: [PageDocument]?
     var currentPage: Int?
+    /// メイン画面の表示（keyboard / thumbnails / layers）とレイヤー表示の上のモニター。古いキーマップにはない
+    var mainView: String?
+    var layerMonitors: String?
 }
 
 struct MediaInfo {
@@ -343,6 +346,11 @@ final class AppModel: ObservableObject {
     /// プレイリスト（キーボードのページの並び）
     @Published var pages: [KeyPage] = [KeyPage(name: "ページ 1", keys: [:])]
     @Published private(set) var currentPage = 0
+    /// はじめの画面（新しく作る・開く）を出しているか
+    @Published var showStartScreen = false
+    /// 「キーマップを開く…」のパネルを出す（AppDelegate が受け持つ）
+    var onOpenPanel: (() -> Void)?
+
     @Published var showPages = UserDefaults.standard.object(forKey: "showPages") as? Bool ?? true {
         didSet { UserDefaults.standard.set(showPages, forKey: "showPages") }
     }
@@ -1709,6 +1717,9 @@ final class AppModel: ObservableObject {
         masterVolume = doc.masterVolume
         stopAllFade = doc.stopAllFade
         mutedOutputs = Set(doc.mutedOutputs ?? [])
+        // キーマップを作ったときの表示に
+        if let v = doc.mainView, ["keyboard", "thumbnails", "layers"].contains(v) { UserDefaults.standard.set(v, forKey: Prefs.mainViewKey) }
+        if let m = doc.layerMonitors { UserDefaults.standard.set(m, forKey: Prefs.layerMonitorsKey) }
         // 古いキーマップは出し先 1 つだけ
         if let outs = doc.videoOutputs {
             video.outputs = outs
@@ -1763,6 +1774,7 @@ final class AppModel: ObservableObject {
         isDirty = false
         reloadAll(force: true)
         UserDefaults.standard.set(url.path, forKey: lastDocumentKey)
+        Prefs.addRecentKeymap(url.path)
         onTitleChange?()
     }
 
@@ -1789,19 +1801,22 @@ final class AppModel: ObservableObject {
         doc.videoTarget = video.outputs.first.map { $0 == VideoOutput.windowID ? "window" : "display:" + $0 } ?? "window"
         doc.stopAllFade = stopAllFade
         doc.mutedOutputs = mutedOutputs.sorted()
+        doc.mainView = UserDefaults.standard.string(forKey: Prefs.mainViewKey)
+        doc.layerMonitors = Prefs.layerMonitors
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(doc).write(to: url, options: .atomic)
         documentURL = url
         isDirty = false
         UserDefaults.standard.set(url.path, forKey: lastDocumentKey)
+        Prefs.addRecentKeymap(url.path)
         onTitleChange?()
     }
 
     private var lastDocumentKey: String { "lastKeymap.instance\(instanceNumber)" }
 
     func restoreLastDocument() {
-        guard Prefs.reopenLastKeymap, let path = UserDefaults.standard.string(forKey: lastDocumentKey),
+        guard let path = UserDefaults.standard.string(forKey: lastDocumentKey),
               FileManager.default.fileExists(atPath: path) else { return }
         do {
             try open(URL(fileURLWithPath: path))

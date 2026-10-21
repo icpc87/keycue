@@ -52,6 +52,9 @@ public sealed partial class AppModel
             Audio.Mixer.SetMasterVolume((float)MasterVolume);
             StopAllFade = doc.StopAllFade;
             MutedOutputs = (doc.MutedOutputs ?? new()).ToHashSet();
+            // キーマップを作ったときの表示に
+            if (doc.MainView is "keyboard" or "thumbnails" or "layers") Prefs.Set("mainView", doc.MainView);
+            if (doc.LayerMonitors is { } monitors) Prefs.Set("layerMonitors", monitors);
             Audio.Mixer.SetMuted(MutedOutputs);
             // Mac で保存したキーマップのディスプレイ名は Windows にはないので、ないものは外れる（ウィンドウは残る）
             var outputs = doc.VideoOutputs ?? new List<string> { doc.VideoTarget.StartsWith("display:") ? doc.VideoTarget["display:".Length..] : VideoOutputIds.Window };
@@ -72,6 +75,7 @@ public sealed partial class AppModel
         IsDirty = false;
         ReloadAll(true);
         Prefs.Set(LastDocumentKey, path);
+        Prefs.AddRecentKeymap(path);
         PagesChanged?.Invoke();
         DeckTabsChanged?.Invoke();
         NotifyAssignments();
@@ -139,6 +143,8 @@ public sealed partial class AppModel
             VideoTarget = Video.Outputs.FirstOrDefault() is { } first && first != VideoOutputIds.Window ? "display:" + first : "window",
             StopAllFade = StopAllFade,
             MutedOutputs = MutedOutputs.OrderBy(x => x).ToList(),
+            MainView = Prefs.MainView,
+            LayerMonitors = Prefs.LayerMonitors,
         };
         var tmp = path + ".tmp";
         File.WriteAllText(tmp, KeymapJson.Write(doc));
@@ -146,12 +152,13 @@ public sealed partial class AppModel
         DocumentPath = path;
         IsDirty = false;
         Prefs.Set(LastDocumentKey, path);
+        Prefs.AddRecentKeymap(path);
         TitleChanged?.Invoke();
     }
 
     public void RestoreLastDocument()
     {
-        if (!Prefs.ReopenLastKeymap || Prefs.GetString(LastDocumentKey) is not { } path || !File.Exists(path)) return;
+        if (Prefs.GetString(LastDocumentKey) is not { } path || !File.Exists(path)) return;
         try
         {
             Open(path);

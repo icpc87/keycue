@@ -53,6 +53,7 @@ struct ContentView: View {
         }
         .background(Color(white: 0.15))
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $model.showStartScreen) { StartView(model: model) }
     }
 }
 
