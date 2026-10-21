@@ -119,22 +119,99 @@ public sealed class Updater
         var exe = Directory.GetFiles(extracted, "KeyCue.exe", SearchOption.AllDirectories).FirstOrDefault()
                   ?? throw new InvalidDataException("更新ファイルに KeyCue.exe がありません");
         var newDir = Path.GetDirectoryName(exe)!;
-        if (Process.GetProcessesByName("KeyCue").Length > 1 &&
-            main?.Dialogs.Ask("ほかの KeyCue が開いています", "更新すると、ほかのインスタンスも終了します（保存していない変更は失われます）。", "続ける", "やめる") != 0)
+        // ほかのアカウントの KeyCue は数えない（入れ替えるのはこのアカウントのフォルダーだけ）
+        var session = Process.GetCurrentProcess().SessionId;
+        var others = Process.GetProcessesByName("KeyCue").Count(p => p.Id != Environment.ProcessId && p.SessionId == session);
+        if (others > 0 &&
+            main?.Dialogs.Ask("ほかの KeyCue が開いています", $"更新すると、ほかに開いている KeyCue（{others} つ）も終了します（保存していない変更は失われます）。", "続ける", "やめる") != 0)
             return;
-        // KeyCue が終わるのを待ってから入れ替え、起動し直す（フォルダのほかのファイルは消さない）
-        var script = Path.Combine(temp, "update.cmd");
-        var pid = Environment.ProcessId;
-        File.WriteAllText(script, string.Join("\r\n",
-            "@echo off",
-            ":wait",
-            $"tasklist /FI \"PID eq {pid}\" | find \"{pid}\" >nul && (timeout /t 1 /nobreak >nul & goto wait)",
-            "taskkill /IM KeyCue.exe /F >nul 2>&1",
-            $"robocopy \"{newDir}\" \"{appDir}\" /E /R:5 /W:1 /NFL /NDL /NJH /NJS /NP >nul",
-            $"start \"\" \"{Path.Combine(appDir, "KeyCue.exe")}\"",
-            $"rmdir /s /q \"{temp}\"",
-            ""));
-        Process.Start(new ProcessStartInfo("cmd.exe", $"/c \"{script}\"") { CreateNoWindow = true, UseShellExecute = false, WindowStyle = ProcessWindowStyle.Hidden });
-        Application.Current.MainWindow?.Close();
+        // 保存の確認は先に（ここでやめたら、更新もしない）
+        if (main != null && !main.ConfirmDiscard()) return;
+        // 新しい版の KeyCue.exe が、この KeyCue が終わるのを待って入れ替え、起動し直す
+        var psi = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = temp };
+        foreach (var a in new[] { "--apply-update", Environment.ProcessId.ToString(), newDir, appDir, temp }) psi.ArgumentList.Add(a);
+        Process.Start(psi);
+        if (main != null) main.CloseForUpdate();
+        else Application.Current.Shutdown();
+    }
+
+    /// <summary>入れ替え（新しい版の KeyCue.exe を --apply-update で起動したとき）。古い KeyCue が終わるのを待ち、ファイルを写して起動し直す</summary>
+    public static int Apply(int oldPid, string newDir, string appDir, string temp)
+    {
+        var code = 0;
+        try
+        {
+            using var old = Process.GetProcessById(oldPid);
+            if (!old.WaitForExit(30000)) old.Kill();
+            old.WaitForExit(5000);
+        }
+        catch (ArgumentException)
+        {
+            // もう終わっている
+        }
+        catch (Exception e)
+        {
+            Log("古い KeyCue を待てません: " + e.Message);
+        }
+        // 同じフォルダーから動いているほかの KeyCue（このアカウントのもの）を終わらせる（使われているファイルは入れ替えられない）
+        var self = Process.GetCurrentProcess();
+        foreach (var p in Process.GetProcessesByName("KeyCue"))
+        {
+            try
+            {
+                if (p.Id == self.Id || p.SessionId != self.SessionId) continue;
+                if (p.MainModule?.FileName is { } f && f.StartsWith(appDir, StringComparison.OrdinalIgnoreCase))
+                {
+                    p.Kill();
+                    p.WaitForExit(5000);
+                }
+            }
+            catch
+            {
+            }
+        }
+        string? error = null;
+        try
+        {
+            UpdateFiles.CopyTree(newDir, appDir);
+        }
+        catch (Exception e)
+        {
+            error = e.Message;
+            code = 1;
+            Log("アップデートのファイルを写せません: " + e);
+        }
+        try
+        {
+            Process.Start(new ProcessStartInfo(Path.Combine(appDir, "KeyCue.exe")) { UseShellExecute = true, WorkingDirectory = appDir });
+        }
+        catch (Exception e)
+        {
+            Log("更新後の KeyCue を起動できません: " + e);
+            code = 2;
+        }
+        if (error != null)
+            MessageBox.Show($"KeyCue を更新できませんでした。\n{error}\n\nホームページ（https://keycue.ic2.jp）からインストーラーを入れ直してください。", "KeyCue のアップデート", MessageBoxButton.OK, MessageBoxImage.Warning);
+        // 一時フォルダー（この KeyCue.exe もここにある）は、これが終わってから消す
+        try
+        {
+            Process.Start(new ProcessStartInfo("cmd.exe", $"/c ping -n 4 127.0.0.1 >nul & rmdir /s /q \"{temp}\"") { CreateNoWindow = true, UseShellExecute = false, WorkingDirectory = Path.GetTempPath() });
+        }
+        catch
+        {
+        }
+        return code;
+    }
+
+    private static void Log(string message)
+    {
+        try
+        {
+            Directory.CreateDirectory(Program.LogFolder);
+            File.AppendAllText(Path.Combine(Program.LogFolder, "error.log"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}\r\n\r\n");
+        }
+        catch
+        {
+        }
     }
 }

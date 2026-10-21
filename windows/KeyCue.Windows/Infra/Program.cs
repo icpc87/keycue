@@ -10,7 +10,9 @@ public static class Program
     /// <summary>インスタンスの番号を取っておく（終わるまで持つ）</summary>
     private static Mutex? instanceMutex;
 
-    public static string LogFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KeyCue");
+    private static string HandoffPipe => DocumentHandoff.PipeName(Environment.UserName, System.Diagnostics.Process.GetCurrentProcess().SessionId);
+
+    public static string LogFolder =>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KeyCue");
 
     [STAThread]
     public static void Main(string[] args)
@@ -21,13 +23,30 @@ public static class Program
             Environment.Exit(Output.VirtualCamera.Install(args[1]));
             return;
         }
+        // アップデート（新しい版の KeyCue.exe が、古い KeyCue が終わるのを待って入れ替える）
+        if (args.Length >= 5 && args[0] == "--apply-update" && int.TryParse(args[1], out var oldPid))
+        {
+            Environment.Exit(Updater.Apply(oldPid, args[2], args[3], args[4]));
+            return;
+        }
+        var selfTest = args.Length >= 1 && args[0] == "--selftest";
+        // エクスプローラーでキーマップを開いたとき、KeyCue がもう開いていればそちらで開く
+        var doc = selfTest ? null : args.FirstOrDefault(a => a.EndsWith(".keycue", StringComparison.OrdinalIgnoreCase) && File.Exists(a));
+        if (doc != null)
+        {
+            Native.AllowSetForegroundWindow(-1);
+            if (DocumentHandoff.Send(HandoffPipe, Path.GetFullPath(doc)))
+            {
+                Environment.Exit(0);
+                return;
+            }
+        }
         Prefs.Load();
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
 #pragma warning disable WPF0001
         app.ThemeMode = ThemeMode.Dark;
 #pragma warning restore WPF0001
         app.DispatcherUnhandledException += OnUnhandled;
-        var selfTest = args.Length >= 1 && args[0] == "--selftest";
         if (selfTest) Prefs.Volatile = true;
 
         var instance = AcquireInstance();
@@ -61,7 +80,7 @@ public static class Program
         }
         else
         {
-            if (args.FirstOrDefault(a => a.EndsWith(".keycue", StringComparison.OrdinalIgnoreCase) && File.Exists(a)) is { } doc)
+            if (doc != null)
             {
                 try { model.Open(doc); } catch (Exception e) { model.StatusMessage = "キーマップを開けません: " + e.Message; }
             }
@@ -69,6 +88,8 @@ public static class Program
             {
                 model.RestoreLastDocument();
             }
+            // あとからエクスプローラーで開いたキーマップを受け取る（開いている KeyCue のうち 1 つが受け取り役）
+            DocumentHandoff.Serve(HandoffPipe, path => window.Dispatcher.BeginInvoke(() => window.OpenFromExplorer(path)), CancellationToken.None);
             if (Prefs.OpenVideoOnLaunch) model.Video.Show();
             // 多重起動のときは最初のインスタンスだけが確認する
             if (instance == 1) window.Dispatcher.BeginInvoke(Updater.Shared.CheckOnLaunch, DispatcherPriority.ApplicationIdle);

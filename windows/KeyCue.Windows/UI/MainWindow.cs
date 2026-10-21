@@ -261,9 +261,33 @@ public sealed class MainWindow : Window
 
     // ---- ファイル ----
 
-    private bool ConfirmDiscard()
+    /// <summary>エクスプローラーでキーマップを開いたとき（もう開いていた KeyCue で開く）</summary>
+    public void OpenFromExplorer(string path)
     {
-        if (!Model.IsDirty) return true;
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
+        if (!ConfirmDiscard()) return;
+        try
+        {
+            Model.Open(path);
+        }
+        catch (Exception e)
+        {
+            Dialogs.Info("キーマップを開けません", e.Message);
+        }
+    }
+
+    /// <summary>アップデートのために閉じる（保存の確認は先に済ませてある）</summary>
+    public void CloseForUpdate()
+    {
+        closingForUpdate = true;
+        Close();
+    }
+    private bool closingForUpdate;
+
+    public bool ConfirmDiscard()
+    {
+        if (!Model.IsDirty || closingForUpdate) return true;
         var r = Dialogs.Ask("キーマップへの変更を保存しますか？", $"「{Model.DocumentName}」は保存されていません。", "保存", "保存しない", "キャンセル");
         if (r == 0) return SaveDocument(false);
         return r == 1;
